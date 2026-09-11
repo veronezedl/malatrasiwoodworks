@@ -1,0 +1,155 @@
+@import "tw-animate-css";
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Inter:wght@400;500;600&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    font-family: theme("fontFamily.body");
+    color: theme("colors.text");
+    background: theme("colors.bg");
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: theme("fontFamily.heading");
+  }
+}
+
+/* tw-animate-css usa sintaxis @utility de Tailwind v4 (este proyecto usa
+   v3), así que sus clases animate-in/fade-in no generan ningún CSS real.
+   Definimos las animaciones de scroll/transición de página a mano. */
+@layer utilities {
+  @keyframes fade-slide-up {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .animate-fade-slide-up {
+    animation: fade-slide-up 700ms ease-out both;
+  }
+
+  @keyframes page-fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  .animate-page-in {
+    animation: page-fade-in 320ms ease-out both;
+  }
+
+  /* Popups (Dialog/Sheet): mismo motivo — las clases data-[state=open]:animate-in
+     etc. que trae Radix/shadcn por convención no generan nada en Tailwind v3,
+     así que los popups aparecían/desaparecían de golpe sin transición. */
+  @keyframes overlay-fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes overlay-fade-out {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+  .animate-overlay-in {
+    animation: overlay-fade-in 200ms ease-out both;
+  }
+  .animate-overlay-out {
+    animation: overlay-fade-out 150ms ease-in both;
+  }
+
+  @keyframes dialog-content-in {
+    from {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+  }
+  @keyframes dialog-content-out {
+    from {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: translate(-50%, -50%) scale(0.95);
+    }
+  }
+  .animate-dialog-in {
+    animation: dialog-content-in 200ms ease-out both;
+  }
+  .animate-dialog-out {
+    animation: dialog-content-out 150ms ease-in both;
+  }
+
+  @keyframes sheet-in-right {
+    from {
+      transform: translateX(100%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+  @keyframes sheet-out-right {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(100%);
+    }
+  }
+  .animate-sheet-in-right {
+    animation: sheet-in-right 300ms ease-out both;
+  }
+  .animate-sheet-out-right {
+    animation: sheet-out-right 250ms ease-in both;
+  }
+
+  @keyframes sheet-in-left {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+  @keyframes sheet-out-left {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-100%);
+    }
+  }
+  .animate-sheet-in-left {
+    animation: sheet-in-left 300ms ease-out both;
+  }
+  .animate-sheet-out-left {
+    animation: sheet-out-left 250ms ease-in both;
+  }
+}

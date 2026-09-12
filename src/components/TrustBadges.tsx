@@ -1,22 +1,4 @@
-import { ShieldCheck, Hammer, Ruler, Sparkles, Headset } from "lucide-react";
-
-export function TrustStrip() {
-  const items = [
-    { icon: ShieldCheck, label: "Compra 100% segura" },
-    { icon: Hammer, label: "Feito à mão" },
-    { icon: Ruler, label: "Sob medida" },
-  ];
-  return (
-    <div className="flex flex-wrap items-center gap-x-8 gap-y-3 text-sm font-medium text-text-muted">
-      {items.map(({ icon: Icon, label }) => (
-        <span key={label} className="flex items-center gap-2">
-          <Icon className="size-4 text-accent" />
-          {label}
-        </span>
-      ))}
-    </div>
-  );
-}
+import { Hammer, Ruler, Sparkles, Headset } from "lucide-react";
 
 const BENEFITS = [
   {

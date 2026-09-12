@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import { ShieldCheck, Hammer, Headset, Ruler } from "lucide-react";
 import logoUrl from "@/assets/logo.png";
 
 export function Footer() {
@@ -7,7 +6,7 @@ export function Footer() {
     <footer className="bg-primary text-white">
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-4">
         <div>
-          <Link to="/" className="flex items-center gap-2">
+          <Link to="/" className="flex items-center gap-2.5">
             <img
               src={logoUrl}
               alt="Malatrasi WoodWorks"
@@ -15,38 +14,38 @@ export function Footer() {
               width={36}
               height={36}
             />
-            <span className="font-heading text-base font-bold">
-              Malatrasi <span className="text-accent">WoodWorks</span>
+            <span className="font-heading text-base font-semibold">
+              Malatrasi <span className="italic text-accent">WoodWorks</span>
             </span>
           </Link>
-          <p className="mt-4 text-sm text-white/70">
-            Marcenaria artesanal: móveis e peças em madeira maciça, prontos
-            ou sob encomenda.
+          <p className="mt-4 text-sm text-white/60">
+            Da madeira bruta à obra de arte. Marcenaria artesanal em madeiras
+            nobres nativas, feita à mão em Bauru-SP.
           </p>
         </div>
 
         <div>
-          <h4 className="font-heading text-sm font-semibold uppercase tracking-wide text-white/90">
+          <h4 className="font-heading text-xs font-semibold uppercase tracking-widest2 text-white/90">
             Loja
           </h4>
-          <ul className="mt-4 space-y-2 text-sm text-white/70">
+          <ul className="mt-4 space-y-2 text-sm text-white/60">
             <li>
-              <Link to="/produtos" className="hover:text-white">
+              <Link to="/produtos" className="hover:text-accent">
                 Produtos
               </Link>
             </li>
             <li>
-              <Link to="/orcamento" className="hover:text-white">
+              <Link to="/orcamento" className="hover:text-accent">
                 Orçamento sob medida
               </Link>
             </li>
             <li>
-              <Link to="/sobre-nos" className="hover:text-white">
+              <Link to="/sobre-nos" className="hover:text-accent">
                 Sobre nós
               </Link>
             </li>
             <li>
-              <Link to="/contato" className="hover:text-white">
+              <Link to="/contato" className="hover:text-accent">
                 Contato
               </Link>
             </li>
@@ -54,22 +53,22 @@ export function Footer() {
         </div>
 
         <div>
-          <h4 className="font-heading text-sm font-semibold uppercase tracking-wide text-white/90">
+          <h4 className="font-heading text-xs font-semibold uppercase tracking-widest2 text-white/90">
             Legal
           </h4>
-          <ul className="mt-4 space-y-2 text-sm text-white/70">
+          <ul className="mt-4 space-y-2 text-sm text-white/60">
             <li>
-              <Link to="/privacidade" className="hover:text-white">
+              <Link to="/privacidade" className="hover:text-accent">
                 Política de privacidade
               </Link>
             </li>
             <li>
-              <Link to="/termos" className="hover:text-white">
+              <Link to="/termos" className="hover:text-accent">
                 Termos e condições
               </Link>
             </li>
             <li>
-              <Link to="/devolucoes" className="hover:text-white">
+              <Link to="/devolucoes" className="hover:text-accent">
                 Trocas e devoluções
               </Link>
             </li>
@@ -77,28 +76,32 @@ export function Footer() {
         </div>
 
         <div>
-          <h4 className="font-heading text-sm font-semibold uppercase tracking-wide text-white/90">
-            Confiança
+          <h4 className="font-heading text-xs font-semibold uppercase tracking-widest2 text-white/90">
+            Contato
           </h4>
-          <ul className="mt-4 space-y-2 text-sm text-white/70">
-            <li className="flex items-center gap-2">
-              <ShieldCheck className="size-4 text-accent" /> Compra 100% segura
+          <ul className="mt-4 space-y-2 text-sm text-white/60">
+            <li>
+              <a
+                href="https://www.instagram.com/malatrasi_woodworks/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-accent"
+              >
+                @malatrasi_woodworks
+              </a>
             </li>
-            <li className="flex items-center gap-2">
-              <Hammer className="size-4 text-accent" /> Feito à mão, sob medida
+            <li>
+              <a href="tel:+5515991288556" className="hover:text-accent">
+                (15) 99128-8556
+              </a>
             </li>
-            <li className="flex items-center gap-2">
-              <Headset className="size-4 text-accent" /> Atendimento próximo
-            </li>
-            <li className="flex items-center gap-2">
-              <Ruler className="size-4 text-accent" /> Orçamento sem compromisso
-            </li>
+            <li>Bauru · SP · Brasil</li>
           </ul>
         </div>
       </div>
 
       <div className="border-t border-white/10 px-4 py-6 sm:px-6">
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 text-xs text-white/60 sm:flex-row">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 text-xs text-white/50 sm:flex-row">
           <span>© 2026 Malatrasi WoodWorks. Todos os direitos reservados.</span>
         </div>
       </div>

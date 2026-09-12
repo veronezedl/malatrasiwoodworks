@@ -4,8 +4,8 @@ export default {
   theme: {
     extend: {
       colors: {
-        primary: "#1f1710",
-        accent: "#b28d3e",
+        primary: "#15110d",
+        accent: "#c1975a",
         bg: "#fbf9f5",
         "bg-muted": "#f1ece2",
         text: "#1f1710",
@@ -13,11 +13,14 @@ export default {
         success: "#1e8e5a",
       },
       borderRadius: {
-        brand: "12px",
+        brand: "0px",
       },
       fontFamily: {
-        heading: ["Poppins", "sans-serif"],
+        heading: ["Playfair Display", "serif"],
         body: ["Inter", "sans-serif"],
+      },
+      letterSpacing: {
+        widest2: "0.18em",
       },
     },
   },

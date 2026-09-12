@@ -23,10 +23,8 @@ import { useAuth } from "@/hooks/use-auth";
 import logoUrl from "@/assets/logo.png";
 
 const NAV_LINKS = [
-  { label: "Início", to: "/" },
+  { label: "Sobre", to: "/sobre-nos" },
   { label: "Produtos", to: "/produtos" },
-  { label: "Sob encomenda", to: "/orcamento" },
-  { label: "Sobre nós", to: "/sobre-nos" },
   { label: "Contato", to: "/contato" },
 ];
 
@@ -44,8 +42,8 @@ function NavItem({
       to={to}
       onClick={onClick}
       className={({ isActive }) =>
-        `text-sm font-medium transition-colors hover:text-accent ${
-          isActive ? "text-accent" : "text-primary"
+        `text-xs font-medium uppercase tracking-widest2 transition-colors hover:text-accent ${
+          isActive ? "text-accent" : "text-white/85"
         }`
       }
     >
@@ -82,27 +80,39 @@ export function Header() {
   }, [session, role, loading, navigate]);
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-white shadow-sm">
+    <header className="sticky top-0 z-40 w-full bg-primary">
       <PromoBanner />
 
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-        <Link to="/" className="flex items-center gap-2">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
+        <Link to="/" className="flex items-center gap-2.5">
           <img
             src={logoUrl}
             alt="Malatrasi WoodWorks"
-            className="h-10 w-10 object-contain"
-            width={40}
-            height={40}
+            className="h-9 w-9 object-contain"
+            width={36}
+            height={36}
           />
-          <span className="font-heading text-lg font-bold text-primary">
-            Malatrasi <span className="text-accent">WoodWorks</span>
+          <span className="font-heading text-lg font-semibold text-white">
+            Malatrasi <span className="italic text-accent">WoodWorks</span>
           </span>
         </Link>
 
-        <nav className="hidden items-center gap-8 md:flex">
+        <nav className="hidden items-center gap-9 md:flex">
           {NAV_LINKS.map((link) => (
             <NavItem key={link.to} to={link.to} label={link.label} />
           ))}
+          <NavLink
+            to="/orcamento"
+            className={({ isActive }) =>
+              `border px-4 py-2 text-xs font-medium uppercase tracking-widest2 transition-colors ${
+                isActive
+                  ? "border-accent bg-accent text-primary"
+                  : "border-accent/60 text-accent hover:bg-accent hover:text-primary"
+              }`
+            }
+          >
+            Orçamento
+          </NavLink>
         </nav>
 
         <div className="flex items-center gap-1 sm:gap-2">
@@ -111,7 +121,7 @@ export function Header() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="hidden sm:inline-flex"
+                className="hidden text-white hover:bg-white/10 hover:text-accent sm:inline-flex"
                 aria-label="Minha conta"
               >
                 <User />
@@ -121,7 +131,7 @@ export function Header() {
             <Button
               variant="ghost"
               size="icon"
-              className="hidden sm:inline-flex"
+              className="hidden text-white hover:bg-white/10 hover:text-accent sm:inline-flex"
               aria-label="Minha conta"
               onClick={openLoginDialog}
             >
@@ -129,11 +139,16 @@ export function Header() {
             </Button>
           )}
           <Link to="/carrinho" className="relative">
-            <Button variant="ghost" size="icon" aria-label="Carrinho">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-white hover:bg-white/10 hover:text-accent"
+              aria-label="Carrinho"
+            >
               <ShoppingCart />
             </Button>
             {itemCount > 0 && (
-              <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-[11px] font-bold text-white">
+              <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-accent px-1 text-[11px] font-bold text-primary">
                 {itemCount}
               </span>
             )}
@@ -144,7 +159,7 @@ export function Header() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="md:hidden"
+                className="text-white hover:bg-white/10 hover:text-accent md:hidden"
                 aria-label="Abrir menu"
               >
                 <Menu />
@@ -156,19 +171,38 @@ export function Header() {
               </SheetHeader>
               <nav className="flex flex-col gap-5 pt-4">
                 {NAV_LINKS.map((link) => (
-                  <NavItem
+                  <NavLink
                     key={link.to}
                     to={link.to}
-                    label={link.label}
                     onClick={() => setMobileMenuOpen(false)}
-                  />
+                    className={({ isActive }) =>
+                      `text-left text-sm font-medium uppercase tracking-widest2 transition-colors ${
+                        isActive ? "text-accent" : "text-primary hover:text-accent"
+                      }`
+                    }
+                  >
+                    {link.label}
+                  </NavLink>
                 ))}
+                <NavLink
+                  to="/orcamento"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={({ isActive }) =>
+                    `text-left text-sm font-medium uppercase tracking-widest2 transition-colors ${
+                      isActive ? "text-accent" : "text-primary hover:text-accent"
+                    }`
+                  }
+                >
+                  Orçamento
+                </NavLink>
                 {session ? (
-                  <NavItem
+                  <NavLink
                     to={accountTo}
                     onClick={() => setMobileMenuOpen(false)}
-                    label={role === "admin" ? "Painel de administração" : "Minha conta"}
-                  />
+                    className="text-left text-sm font-medium uppercase tracking-widest2 text-primary hover:text-accent"
+                  >
+                    {role === "admin" ? "Painel de administração" : "Minha conta"}
+                  </NavLink>
                 ) : (
                   <button
                     type="button"
@@ -176,7 +210,7 @@ export function Header() {
                       setMobileMenuOpen(false);
                       openLoginDialog();
                     }}
-                    className="text-left text-sm font-medium text-primary transition-colors hover:text-accent"
+                    className="text-left text-sm font-medium uppercase tracking-widest2 text-primary transition-colors hover:text-accent"
                   >
                     Entrar
                   </button>

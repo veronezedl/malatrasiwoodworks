@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Mail, MapPin, Clock, CheckCircle2 } from "lucide-react";
+import { Mail, MapPin, Clock, Phone, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -73,9 +73,7 @@ export function ContactSection() {
               <p className="font-heading text-sm font-semibold text-primary">
                 Oficina
               </p>
-              <p className="text-sm text-text-muted">
-                Atendimento com hora marcada
-              </p>
+              <p className="text-sm text-text-muted">Bauru · SP · Brasil</p>
             </div>
           </div>
           <div className="flex items-start gap-3">
@@ -87,6 +85,22 @@ export function ContactSection() {
               <p className="text-sm text-text-muted">
                 Segunda a sexta · 9h–18h
               </p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <Phone className="mt-1 size-5 shrink-0 text-accent" />
+            <div>
+              <p className="font-heading text-sm font-semibold text-primary">
+                WhatsApp
+              </p>
+              <a
+                href="https://wa.me/5515991288556"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-text-muted hover:text-accent"
+              >
+                (15) 99128-8556
+              </a>
             </div>
           </div>
           <div className="flex items-start gap-3">

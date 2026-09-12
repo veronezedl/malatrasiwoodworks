@@ -27,6 +27,12 @@ export async function createQuoteRequest(params: {
   dimensions?: string | null;
   referenceImageUrl?: string | null;
   budgetHint?: number | null;
+  productType?: string | null;
+  widthCm?: number | null;
+  lengthCm?: number | null;
+  heightCm?: number | null;
+  hasHandle?: boolean;
+  estimatedPrice?: number | null;
 }): Promise<DbQuoteRequest> {
   const { data, error } = await supabase
     .from("quote_requests")
@@ -37,6 +43,12 @@ export async function createQuoteRequest(params: {
       dimensions: params.dimensions || null,
       reference_image_url: params.referenceImageUrl || null,
       budget_hint: params.budgetHint ?? null,
+      product_type: params.productType || null,
+      width_cm: params.widthCm ?? null,
+      length_cm: params.lengthCm ?? null,
+      height_cm: params.heightCm ?? null,
+      has_handle: params.hasHandle ?? false,
+      estimated_price: params.estimatedPrice ?? null,
     })
     .select()
     .single();

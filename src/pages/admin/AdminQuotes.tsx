@@ -11,6 +11,7 @@ import {
   type QuoteStatus,
   type QuoteWithCustomer,
 } from "@/types/database";
+import { getProductTypeConfig } from "@/lib/pricing";
 import { useSeo } from "@/hooks/use-seo";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
@@ -53,7 +54,11 @@ function QuoteDetailDialog({
   const [open, setOpen] = React.useState(false);
   const [status, setStatus] = React.useState<QuoteStatus>(quote.status);
   const [quotedPrice, setQuotedPrice] = React.useState(
-    quote.quoted_price != null ? String(quote.quoted_price) : "",
+    quote.quoted_price != null
+      ? String(quote.quoted_price)
+      : quote.estimated_price != null
+        ? String(quote.estimated_price)
+        : "",
   );
   const [adminNotes, setAdminNotes] = React.useState(quote.admin_notes ?? "");
   const [saving, setSaving] = React.useState(false);
@@ -62,7 +67,13 @@ function QuoteDetailDialog({
   React.useEffect(() => {
     if (!open) return;
     setStatus(quote.status);
-    setQuotedPrice(quote.quoted_price != null ? String(quote.quoted_price) : "");
+    setQuotedPrice(
+      quote.quoted_price != null
+        ? String(quote.quoted_price)
+        : quote.estimated_price != null
+          ? String(quote.estimated_price)
+          : "",
+    );
     setAdminNotes(quote.admin_notes ?? "");
   }, [open, quote]);
 
@@ -140,6 +151,14 @@ function QuoteDetailDialog({
         <div className="grid grid-cols-2 gap-3 text-sm">
           <div>
             <h3 className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+              Tipo de produto
+            </h3>
+            <p className="mt-1 text-text">
+              {quote.product_type ? getProductTypeConfig(quote.product_type).label : "—"}
+            </p>
+          </div>
+          <div>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-text-muted">
               Madeira
             </h3>
             <p className="mt-1 text-text">{quote.wood_type || "—"}</p>
@@ -148,9 +167,28 @@ function QuoteDetailDialog({
             <h3 className="text-xs font-semibold uppercase tracking-wide text-text-muted">
               Medidas
             </h3>
-            <p className="mt-1 text-text">{quote.dimensions || "—"}</p>
+            <p className="mt-1 text-text">
+              {quote.width_cm && quote.length_cm
+                ? `${quote.width_cm} x ${quote.length_cm}${quote.height_cm ? ` x ${quote.height_cm}` : ""} cm`
+                : quote.dimensions || "—"}
+            </p>
+          </div>
+          <div>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+              Cabo / alça
+            </h3>
+            <p className="mt-1 text-text">{quote.has_handle ? "Sim" : "Não"}</p>
           </div>
         </div>
+
+        {quote.estimated_price != null && (
+          <div>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+              Estimativa calculada pelo site
+            </h3>
+            <p className="mt-1 text-sm text-text">{currency.format(quote.estimated_price)}</p>
+          </div>
+        )}
 
         {quote.budget_hint != null && (
           <div>
@@ -283,7 +321,11 @@ export function AdminQuotes() {
                 <p className="mt-1 truncate text-sm text-text-muted">{quote.description}</p>
                 <p className="mt-1 text-xs text-text-muted">
                   {dateFmt.format(new Date(quote.created_at))}
-                  {quote.quoted_price != null && ` · ${currency.format(quote.quoted_price)}`}
+                  {quote.quoted_price != null
+                    ? ` · ${currency.format(quote.quoted_price)}`
+                    : quote.estimated_price != null
+                      ? ` · ~${currency.format(quote.estimated_price)} (estimativa)`
+                      : ""}
                 </p>
               </div>
               <QuoteDetailDialog quote={quote} onSaved={load} />

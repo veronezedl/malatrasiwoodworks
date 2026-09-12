@@ -6,10 +6,12 @@ import { useSeo } from "@/hooks/use-seo";
 import { fetchMyCustomer } from "@/lib/api/customers";
 import { createQuoteRequest, uploadQuoteReferenceImage } from "@/lib/api/quotes";
 import { fetchProductBySlug } from "@/lib/api/catalog";
+import { PRODUCT_TYPES, calculateEstimate } from "@/lib/pricing";
 import type { DbCustomer } from "@/types/database";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
@@ -20,10 +22,15 @@ import {
 import { LoginForm } from "@/components/LoginForm";
 import { RegistroForm } from "@/components/RegistroForm";
 
+const currency = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+});
+
 export function Orcamento() {
   useSeo(
     "Orçamento sob medida · Malatrasi WoodWorks",
-    "Solicite um orçamento para uma peça de madeira personalizada, sem compromisso.",
+    "Calcule uma estimativa e solicite um orçamento para uma peça de madeira personalizada, sem compromisso.",
   );
   const [searchParams] = useSearchParams();
   const productSlug = searchParams.get("produto");
@@ -36,12 +43,23 @@ export function Orcamento() {
 
   const [description, setDescription] = React.useState("");
   const [woodType, setWoodType] = React.useState("");
-  const [dimensions, setDimensions] = React.useState("");
-  const [budgetHint, setBudgetHint] = React.useState("");
+  const [productType, setProductType] = React.useState(PRODUCT_TYPES[0].value);
+  const [widthCm, setWidthCm] = React.useState("");
+  const [lengthCm, setLengthCm] = React.useState("");
+  const [heightCm, setHeightCm] = React.useState("");
+  const [hasHandle, setHasHandle] = React.useState(false);
   const [referenceFile, setReferenceFile] = React.useState<File | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
   const [submitted, setSubmitted] = React.useState(false);
   const [formError, setFormError] = React.useState<string | null>(null);
+
+  const estimate = calculateEstimate({
+    productType,
+    widthCm: Number(widthCm),
+    lengthCm: Number(lengthCm),
+    heightCm: heightCm ? Number(heightCm) : null,
+    hasHandle,
+  });
 
   React.useEffect(() => {
     if (!productSlug) return;
@@ -84,13 +102,25 @@ export function Orcamento() {
         );
       }
 
+      const dimensionsSummary =
+        widthCm && lengthCm
+          ? `${widthCm} x ${lengthCm}${heightCm ? ` x ${heightCm}` : ""} cm${
+              hasHandle ? " · com cabo/alça" : ""
+            }`
+          : null;
+
       await createQuoteRequest({
         customerId: customer.id,
         description,
         woodType: woodType || null,
-        dimensions: dimensions || null,
+        dimensions: dimensionsSummary,
         referenceImageUrl,
-        budgetHint: budgetHint ? Number(budgetHint) : null,
+        productType,
+        widthCm: widthCm ? Number(widthCm) : null,
+        lengthCm: lengthCm ? Number(lengthCm) : null,
+        heightCm: heightCm ? Number(heightCm) : null,
+        hasHandle,
+        estimatedPrice: estimate?.estimatedPrice ?? null,
       });
       setSubmitted(true);
     } catch (err) {
@@ -114,7 +144,7 @@ export function Orcamento() {
           Pedido de orçamento enviado!
         </h1>
         <p className="mt-2 text-sm text-text-muted">
-          Vamos analisar os detalhes e retornar com um valor em breve. Você
+          Vamos analisar os detalhes e confirmar o valor final em breve. Você
           pode acompanhar o status em "Meus orçamentos".
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-3">
@@ -139,8 +169,8 @@ export function Orcamento() {
           Orçamento sob medida
         </h1>
         <p className="mt-2 text-sm text-text-muted">
-          Conte pra gente a peça que você tem em mente — madeira, medidas e
-          acabamento — e enviamos um orçamento sem compromisso.
+          Informe o tipo de peça e as medidas para ver uma estimativa na hora
+          — o valor final é confirmado por nós antes de virar pedido.
         </p>
       </div>
 
@@ -182,7 +212,95 @@ export function Orcamento() {
               </div>
             )}
 
-            <div className="space-y-1.5">
+            <h2 className="font-heading text-sm font-semibold uppercase tracking-widest2 text-text-muted">
+              Calculadora
+            </h2>
+            <div className="mt-3 grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="quote-product-type">Tipo de produto</Label>
+                <Select
+                  id="quote-product-type"
+                  value={productType}
+                  onChange={(e) => setProductType(e.target.value)}
+                >
+                  {PRODUCT_TYPES.map((t) => (
+                    <option key={t.value} value={t.value}>
+                      {t.label}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="quote-width">Largura (cm)</Label>
+                <Input
+                  id="quote-width"
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  value={widthCm}
+                  onChange={(e) => setWidthCm(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="quote-length">Comprimento (cm)</Label>
+                <Input
+                  id="quote-length"
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  value={lengthCm}
+                  onChange={(e) => setLengthCm(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="quote-height">Altura / espessura (cm, opcional)</Label>
+                <Input
+                  id="quote-height"
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  value={heightCm}
+                  onChange={(e) => setHeightCm(e.target.value)}
+                />
+              </div>
+              <div className="flex items-end pb-2.5">
+                <label className="flex items-center gap-2 text-sm text-text">
+                  <input
+                    type="checkbox"
+                    className="size-4 accent-accent"
+                    checked={hasHandle}
+                    onChange={(e) => setHasHandle(e.target.checked)}
+                  />
+                  Tem cabo / alça
+                </label>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-brand bg-bg-muted p-4">
+              {estimate ? (
+                <>
+                  <p className="text-xs uppercase tracking-widest2 text-text-muted">
+                    Área: {estimate.areaM2.toFixed(2)} m²
+                  </p>
+                  <p className="mt-1 font-heading text-2xl font-semibold text-primary">
+                    {currency.format(estimate.estimatedPrice)}
+                  </p>
+                  <p className="mt-1 text-xs text-text-muted">
+                    Valor estimado — confirmamos o preço final ao analisar seu
+                    pedido.
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-text-muted">
+                  Preencha largura e comprimento para ver uma estimativa.
+                </p>
+              )}
+            </div>
+
+            <h2 className="mt-6 font-heading text-sm font-semibold uppercase tracking-widest2 text-text-muted">
+              Detalhes da peça
+            </h2>
+            <div className="mt-3 space-y-1.5">
               <Label htmlFor="quote-description">Descreva a peça desejada</Label>
               <Textarea
                 id="quote-description"
@@ -202,26 +320,6 @@ export function Orcamento() {
                   placeholder="Ex: Freijó, Cumaru, Pinus..."
                   value={woodType}
                   onChange={(e) => setWoodType(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="quote-dimensions">Medidas aproximadas (opcional)</Label>
-                <Input
-                  id="quote-dimensions"
-                  placeholder="Ex: 1,20m x 0,60m x 0,45m"
-                  value={dimensions}
-                  onChange={(e) => setDimensions(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="quote-budget">Orçamento estimado em R$ (opcional)</Label>
-                <Input
-                  id="quote-budget"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={budgetHint}
-                  onChange={(e) => setBudgetHint(e.target.value)}
                 />
               </div>
               <div className="space-y-1.5">

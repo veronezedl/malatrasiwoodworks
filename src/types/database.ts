@@ -113,6 +113,8 @@ export interface DbOrder {
   shipping_region: string | null;
   shipping_country_code: string;
   admin_notes: string | null;
+  engraving_text: string | null;
+  engraving_image_url: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -192,6 +194,12 @@ export interface DbQuoteRequest {
   dimensions: string | null;
   reference_image_url: string | null;
   budget_hint: number | null;
+  product_type: string | null;
+  width_cm: number | null;
+  length_cm: number | null;
+  height_cm: number | null;
+  has_handle: boolean;
+  estimated_price: number | null;
   status: QuoteStatus;
   quoted_price: number | null;
   admin_notes: string | null;

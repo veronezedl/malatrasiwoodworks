@@ -1,9 +1,11 @@
+import * as React from "react";
 import { Link } from "react-router-dom";
 import { Hammer, Ruler } from "lucide-react";
 import type { Product } from "@/data/products";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/hooks/use-cart";
 import { useToast } from "@/hooks/use-toast";
+import { ProductQuickViewDialog } from "@/components/ProductQuickViewDialog";
 
 const currency = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -13,30 +15,37 @@ const currency = new Intl.NumberFormat("pt-BR", {
 export function ProductCard({ product }: { product: Product }) {
   const { addItem } = useCart();
   const { showToast } = useToast();
+  const [quickViewOpen, setQuickViewOpen] = React.useState(false);
 
   return (
     <div className="flex flex-col overflow-hidden rounded-brand border border-black/10 bg-white transition-shadow hover:shadow-md">
-      <Link
-        to={`/produto/${product.slug}`}
+      <button
+        type="button"
+        onClick={() => setQuickViewOpen(true)}
         className="block aspect-square overflow-hidden bg-bg-muted"
+        aria-label={`Ver detalhes de ${product.name}`}
       >
         <img
           src={product.image}
           alt={product.name}
           loading="lazy"
-          className="h-full w-full object-cover"
+          className="h-full w-full object-cover transition-transform hover:scale-105"
         />
-      </Link>
+      </button>
 
       <div className="flex flex-1 flex-col gap-1.5 p-3 sm:gap-2 sm:p-4">
         <span className="text-[10px] font-medium uppercase tracking-wide text-accent sm:text-xs">
           {product.category}
         </span>
-        <Link to={`/produto/${product.slug}`}>
+        <button
+          type="button"
+          onClick={() => setQuickViewOpen(true)}
+          className="text-left"
+        >
           <h3 className="font-heading line-clamp-2 text-xs font-semibold text-primary hover:text-accent sm:text-sm">
             {product.name}
           </h3>
-        </Link>
+        </button>
         <p className="font-heading text-base font-bold text-primary sm:text-lg">
           {product.isCustomOrder ? "Sob orçamento" : currency.format(product.price)}
         </p>
@@ -71,6 +80,12 @@ export function ProductCard({ product }: { product: Product }) {
           </Button>
         )}
       </div>
+
+      <ProductQuickViewDialog
+        product={product}
+        open={quickViewOpen}
+        onOpenChange={setQuickViewOpen}
+      />
     </div>
   );
 }

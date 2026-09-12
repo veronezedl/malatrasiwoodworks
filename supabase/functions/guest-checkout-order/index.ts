@@ -66,6 +66,8 @@ Deno.serve(async (req) => {
     const items: { product_id: string; quantity: number }[] = body.items ?? [];
     const shippingMethodId: string | undefined = body.shipping_method_id;
     const paymentMethod: string = body.payment_method;
+    const engravingText: string | null = body.engraving_text || null;
+    const engravingImageUrl: string | null = body.engraving_image_url || null;
 
     const customerError = validateCustomer(customerInput);
     if (customerError) return jsonError(customerError, 400);
@@ -172,6 +174,8 @@ Deno.serve(async (req) => {
         shipping_city: customerFields.city,
         shipping_region: customerFields.region,
         shipping_country_code: customerFields.country_code,
+        engraving_text: engravingText,
+        engraving_image_url: engravingImageUrl,
       })
       .select()
       .single();

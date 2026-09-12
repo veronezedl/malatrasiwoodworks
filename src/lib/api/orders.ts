@@ -26,11 +26,28 @@ async function notifyOrderStatus(
   }
 }
 
+export interface EngravingInput {
+  engravingText?: string | null;
+  engravingImageUrl?: string | null;
+}
+
+export async function uploadEngravingImage(file: File): Promise<string> {
+  const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+  const path = `${crypto.randomUUID()}.${ext}`;
+  const { error: uploadError } = await supabase.storage
+    .from("engravings")
+    .upload(path, file, { cacheControl: "3600" });
+  if (uploadError) throw uploadError;
+  const { data } = supabase.storage.from("engravings").getPublicUrl(path);
+  return data.publicUrl;
+}
+
 export async function createOrder(
   customer: DbCustomer,
   items: CartItem[],
   paymentMethod: PaymentMethod,
   shippingMethod: DbShippingMethod,
+  engraving?: EngravingInput,
 ): Promise<DbOrder> {
   const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
   const total = subtotal + shippingMethod.price;
@@ -54,6 +71,8 @@ export async function createOrder(
       shipping_city: customer.city,
       shipping_region: customer.region,
       shipping_country_code: customer.country_code,
+      engraving_text: engraving?.engravingText || null,
+      engraving_image_url: engraving?.engravingImageUrl || null,
     })
     .select()
     .single();

@@ -113,6 +113,10 @@ create table public.orders (
   shipping_region text,
   shipping_country_code text not null default 'BR',
   admin_notes text,
+  -- personalização gravada na peça (texto e/ou imagem de referência),
+  -- coletada no checkout e aplicada ao pedido inteiro
+  engraving_text text,
+  engraving_image_url text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -164,6 +168,15 @@ create table public.quote_requests (
   dimensions text,
   reference_image_url text,
   budget_hint numeric(10, 2),
+  -- calculadora sob medida: dimensões estruturadas + estimativa automática,
+  -- preenchidas pela calculadora em /orcamento (ver src/lib/pricing.ts).
+  -- Tudo opcional — o cliente ainda pode preencher só a descrição livre.
+  product_type text,
+  width_cm numeric(8, 2),
+  length_cm numeric(8, 2),
+  height_cm numeric(8, 2),
+  has_handle boolean not null default false,
+  estimated_price numeric(10, 2),
   status public.quote_status not null default 'novo',
   quoted_price numeric(10, 2),
   admin_notes text,
@@ -495,3 +508,18 @@ create policy "quotes_bucket_delete_own" on storage.objects
     bucket_id = 'quotes'
     and ((storage.foldername(name))[1] = auth.uid()::text or public.is_admin())
   );
+
+-- Imagens de gravação anexadas no checkout (logo/arte a gravar na peça).
+-- Insert é público (sem exigir auth.uid()) porque o checkout de convidado
+-- não tem sessão — são só imagens de referência para produção, sem dado
+-- sensível; a exclusão fica restrita ao admin para evitar abuso.
+insert into storage.buckets (id, name, public)
+values ('engravings', 'engravings', true)
+on conflict (id) do nothing;
+
+create policy "engravings_bucket_select_public" on storage.objects
+  for select using (bucket_id = 'engravings');
+create policy "engravings_bucket_insert_public" on storage.objects
+  for insert with check (bucket_id = 'engravings');
+create policy "engravings_bucket_delete_admin" on storage.objects
+  for delete using (bucket_id = 'engravings' and public.is_admin());

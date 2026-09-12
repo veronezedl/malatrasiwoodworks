@@ -99,6 +99,26 @@ export function AdminOrderQuickView({ orderId }: { orderId: string }) {
               </div>
             </div>
 
+            {(order.engraving_text || order.engraving_image_url) && (
+              <div>
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+                  Gravação personalizada
+                </h3>
+                {order.engraving_text && (
+                  <p className="mt-1 whitespace-pre-wrap text-sm text-text">
+                    {order.engraving_text}
+                  </p>
+                )}
+                {order.engraving_image_url && (
+                  <img
+                    src={order.engraving_image_url}
+                    alt="Referência de gravação enviada pelo cliente"
+                    className="mt-2 max-h-40 rounded-brand border border-black/10 object-cover"
+                  />
+                )}
+              </div>
+            )}
+
             <div>
               <h3 className="text-xs font-semibold uppercase tracking-wide text-text-muted">
                 Endereço de entrega

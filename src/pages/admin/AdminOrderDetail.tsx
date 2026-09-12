@@ -178,6 +178,26 @@ export function AdminOrderDetail() {
             </div>
           </div>
 
+          {(order.engraving_text || order.engraving_image_url) && (
+            <div className="rounded-brand border border-black/10 bg-white p-5">
+              <h2 className="font-heading text-sm font-semibold text-primary">
+                Gravação personalizada
+              </h2>
+              {order.engraving_text && (
+                <p className="mt-2 whitespace-pre-wrap text-sm text-text">
+                  {order.engraving_text}
+                </p>
+              )}
+              {order.engraving_image_url && (
+                <img
+                  src={order.engraving_image_url}
+                  alt="Referência de gravação enviada pelo cliente"
+                  className="mt-3 max-h-56 rounded-brand border border-black/10 object-cover"
+                />
+              )}
+            </div>
+          )}
+
           <div className="rounded-brand border border-black/10 bg-white p-5">
             <h2 className="font-heading text-sm font-semibold text-primary">
               Endereço de entrega

@@ -21,6 +21,8 @@ export interface GuestCheckoutInput {
   items: { product_id: string; quantity: number }[];
   shipping_method_id: string;
   payment_method: PaymentMethod;
+  engraving_text?: string | null;
+  engraving_image_url?: string | null;
 }
 
 export interface GuestCheckoutResult {

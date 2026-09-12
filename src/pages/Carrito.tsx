@@ -1,13 +1,22 @@
 import * as React from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Minus, Plus, X, Wallet, Truck, ChevronDown, CheckCircle2 } from "lucide-react";
+import {
+  Minus,
+  Plus,
+  X,
+  Wallet,
+  Truck,
+  ChevronDown,
+  CheckCircle2,
+  PenLine,
+} from "lucide-react";
 import { useCart, type CartItem } from "@/hooks/use-cart";
 import { useSeo } from "@/hooks/use-seo";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { fetchProductBySlug } from "@/lib/api/catalog";
-import { createOrder } from "@/lib/api/orders";
+import { createOrder, uploadEngravingImage } from "@/lib/api/orders";
 import { listActiveShippingMethods } from "@/lib/api/shipping";
 import { submitGuestOrder, type GuestCustomerInput } from "@/lib/api/guestCheckout";
 import {
@@ -34,6 +43,9 @@ import {
 import { LoginForm } from "@/components/LoginForm";
 import { RegistroForm } from "@/components/RegistroForm";
 import { GuestCheckoutForm } from "@/components/GuestCheckoutForm";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 const currency = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -61,6 +73,8 @@ export function Carrito() {
   const [authMode, setAuthMode] = React.useState<"login" | "registro" | "guest">("guest");
   const [resumeSignal, setResumeSignal] = React.useState(0);
   const pendingCheckoutRef = React.useRef(false);
+  const [engravingText, setEngravingText] = React.useState("");
+  const [engravingFile, setEngravingFile] = React.useState<File | null>(null);
 
   // Permite que links externos (ex. landing pages de campanha) adicionem um
   // produto direto no carrinho, ex: /carrinho?add=<slug>&qty=2.
@@ -153,11 +167,16 @@ export function Carrito() {
         return;
       }
 
+      const engravingImageUrl = engravingFile
+        ? await uploadEngravingImage(engravingFile)
+        : null;
+
       const order = await createOrder(
         customer as DbCustomer,
         items,
         paymentMethod,
         selectedShipping,
+        { engravingText: engravingText || null, engravingImageUrl },
       );
 
       clearCart();
@@ -184,12 +203,18 @@ export function Carrito() {
       return;
     }
 
+    const engravingImageUrl = engravingFile
+      ? await uploadEngravingImage(engravingFile)
+      : null;
+
     const { order } = await submitGuestOrder({
       draftCustomerId,
       customer,
       items: items.map((item) => ({ product_id: item.id, quantity: item.quantity })),
       shipping_method_id: selectedShipping.id,
       payment_method: paymentMethod,
+      engraving_text: engravingText || null,
+      engraving_image_url: engravingImageUrl,
     });
 
     setLoginDialogOpen(false);
@@ -402,6 +427,7 @@ export function Carrito() {
       </h1>
 
       <div className="mt-8 lg:grid lg:grid-cols-[1fr_22rem] lg:items-start lg:gap-10">
+        <div className="space-y-8">
         <div className="divide-y divide-black/10 border-y border-black/10">
           {items.map((item: CartItem) => (
             <div key={item.slug} className="flex flex-wrap items-center gap-4 py-5">
@@ -460,6 +486,40 @@ export function Carrito() {
               </div>
             </div>
           ))}
+        </div>
+
+        <div className="rounded-brand border border-black/10 bg-white p-5">
+          <div className="flex items-center gap-2">
+            <PenLine className="size-4 text-accent" />
+            <h2 className="font-heading text-sm font-semibold text-primary">
+              Gravação personalizada (opcional)
+            </h2>
+          </div>
+          <p className="mt-1 text-xs text-text-muted">
+            Quer gravar um nome, frase ou logo na peça? Descreva aqui e, se
+            quiser, anexe uma imagem — combinamos os detalhes com você antes
+            da produção.
+          </p>
+          <div className="mt-3 space-y-1.5">
+            <Label htmlFor="engraving-text">Texto para gravação</Label>
+            <Textarea
+              id="engraving-text"
+              rows={2}
+              placeholder="Ex: nome de família, frase, data..."
+              value={engravingText}
+              onChange={(e) => setEngravingText(e.target.value)}
+            />
+          </div>
+          <div className="mt-3 space-y-1.5">
+            <Label htmlFor="engraving-image">Anexar logo ou imagem de referência</Label>
+            <Input
+              id="engraving-image"
+              type="file"
+              accept="image/*"
+              onChange={(e) => setEngravingFile(e.target.files?.[0] ?? null)}
+            />
+          </div>
+        </div>
         </div>
 
         <div className="hidden rounded-brand bg-bg-muted p-6 lg:block lg:sticky lg:top-24">

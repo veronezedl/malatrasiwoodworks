@@ -61,7 +61,7 @@ Deno.serve(async (req) => {
         const isBanned = user?.banned_until ? new Date(user.banned_until) > new Date() : false;
         return {
           id: p.id,
-          email: user?.email ?? "(cuenta eliminada)",
+          email: user?.email ?? "(conta excluída)",
           created_at: p.created_at,
           last_sign_in_at: user?.last_sign_in_at ?? null,
           is_self: p.id === auth.userId,

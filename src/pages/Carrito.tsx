@@ -100,6 +100,12 @@ export function Carrito() {
           showToast("Produto adicionado", `${product.name} foi adicionado ao seu carrinho.`);
         }
       })
+      .catch(() => {
+        showToast(
+          "Não foi possível adicionar o produto",
+          "Tente novamente em instantes.",
+        );
+      })
       .finally(() => {
         setSearchParams((params) => {
           const next = new URLSearchParams(params);
@@ -118,6 +124,10 @@ export function Carrito() {
       .then((methods) => {
         setShippingMethods(methods);
         setShippingMethodId((current) => current ?? methods[0]?.id ?? null);
+      })
+      .catch(() => {
+        // Best-effort: sem métodos carregados, o resumo do pedido avisa que
+        // nenhuma opção de entrega está disponível.
       })
       .finally(() => setLoadingShipping(false));
   }, []);

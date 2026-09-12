@@ -20,6 +20,9 @@ export function PromoBanner() {
           setMessage(promo.message);
         }
       })
+      .catch(() => {
+        // Best-effort: sem promoção ativa, a faixa simplesmente não aparece.
+      })
       .finally(() => setLoaded(true));
   }, []);
 

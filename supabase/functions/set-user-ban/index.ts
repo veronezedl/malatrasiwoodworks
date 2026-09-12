@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
   try {
     const { userId, banned } = await req.json();
     if (!userId || typeof banned !== "boolean") {
-      return jsonError("userId y banned (boolean) são obrigatórios.", 400);
+      return jsonError("userId e banned (boolean) são obrigatórios.", 400);
     }
 
     const supabase = createClient(
@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
     if (!auth.ok) return jsonError(auth.message, auth.status);
 
     if (userId === auth.userId) {
-      return jsonError("No puedes bloquearte el acceso a ti mismo.", 400);
+      return jsonError("Você não pode bloquear seu próprio acesso.", 400);
     }
 
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;

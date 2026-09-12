@@ -63,12 +63,17 @@ export function Orcamento() {
 
   React.useEffect(() => {
     if (!productSlug) return;
-    fetchProductBySlug(productSlug).then((product) => {
-      if (product) {
-        setDescription(`Gostaria de um orçamento para: ${product.name}`);
-        if (product.woodType) setWoodType(product.woodType);
-      }
-    });
+    fetchProductBySlug(productSlug)
+      .then((product) => {
+        if (product) {
+          setDescription(`Gostaria de um orçamento para: ${product.name}`);
+          if (product.woodType) setWoodType(product.woodType);
+        }
+      })
+      .catch(() => {
+        // Best-effort: sem o produto pré-preenchido, o cliente ainda pode
+        // descrever a peça manualmente.
+      });
   }, [productSlug]);
 
   React.useEffect(() => {
@@ -80,6 +85,7 @@ export function Orcamento() {
     setCustomerLoading(true);
     fetchMyCustomer(session.user.id)
       .then(setCustomer)
+      .catch(() => setCustomer(null))
       .finally(() => setCustomerLoading(false));
   }, [session]);
 

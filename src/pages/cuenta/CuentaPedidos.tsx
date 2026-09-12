@@ -22,6 +22,7 @@ export function CuentaPedidos() {
   React.useEffect(() => {
     listOrders()
       .then(setOrders)
+      .catch(() => setOrders([]))
       .finally(() => setLoading(false));
   }, []);
 

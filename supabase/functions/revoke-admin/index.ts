@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
     if (!auth.ok) return jsonError(auth.message, auth.status);
 
     if (userId === auth.userId) {
-      return jsonError("No puedes quitarte el acceso a ti mismo.", 400);
+      return jsonError("Você não pode remover seu próprio acesso.", 400);
     }
 
     const { error } = await supabase

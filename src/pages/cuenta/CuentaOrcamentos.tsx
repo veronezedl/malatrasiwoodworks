@@ -33,6 +33,7 @@ export function CuentaOrcamentos() {
   React.useEffect(() => {
     listMyQuoteRequests()
       .then(setQuotes)
+      .catch(() => setQuotes([]))
       .finally(() => setLoading(false));
   }, []);
 

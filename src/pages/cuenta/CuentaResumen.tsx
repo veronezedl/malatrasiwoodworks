@@ -25,6 +25,7 @@ export function CuentaResumen() {
   React.useEffect(() => {
     listOrders()
       .then(setOrders)
+      .catch(() => setOrders([]))
       .finally(() => setLoading(false));
   }, []);
 

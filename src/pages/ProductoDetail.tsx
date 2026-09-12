@@ -27,6 +27,7 @@ export function ProductoDetail() {
     setLoading(true);
     fetchProductBySlug(slug)
       .then(setProduct)
+      .catch(() => setProduct(null))
       .finally(() => setLoading(false));
   }, [slug]);
 

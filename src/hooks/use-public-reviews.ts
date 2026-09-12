@@ -12,6 +12,10 @@ export function usePublicReviews(limit = 12) {
       .then((data) => {
         if (!cancelled) setReviews(data);
       })
+      .catch(() => {
+        // Best-effort: se falhar (ex. bloqueio de rede do navegador), a
+        // seção de avaliações simplesmente mostra o estado vazio.
+      })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });

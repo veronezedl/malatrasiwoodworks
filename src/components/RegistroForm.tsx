@@ -2,7 +2,7 @@ import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { BR_STATES } from "@/data/states";
-import { formatCep } from "@/lib/cep";
+import { formatCep, joinStreetNumber } from "@/lib/cep";
 import { useCepLookup } from "@/hooks/use-cep-lookup";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -18,6 +18,7 @@ interface FormState {
   phone: string;
   cpfCnpj: string;
   addressLine1: string;
+  number: string;
   addressLine2: string;
   neighborhood: string;
   postalCode: string;
@@ -33,6 +34,7 @@ const initialState: FormState = {
   phone: "",
   cpfCnpj: "",
   addressLine1: "",
+  number: "",
   addressLine2: "",
   neighborhood: "",
   postalCode: "",
@@ -89,7 +91,7 @@ export function RegistroForm({
       neighborhood: undefined,
       city: undefined,
     }));
-    document.getElementById(`${idPrefix}-addressLine1`)?.focus();
+    document.getElementById(`${idPrefix}-${address.street ? "number" : "addressLine1"}`)?.focus();
   });
 
   function handleCepChange(value: string) {
@@ -109,6 +111,7 @@ export function RegistroForm({
     }
     if (!form.phone.trim()) next.phone = "Informe um telefone de contato.";
     if (!form.addressLine1.trim()) next.addressLine1 = "Informe seu endereço.";
+    if (!form.number.trim()) next.number = "Informe o número.";
     if (!form.neighborhood.trim()) next.neighborhood = "Informe o bairro.";
     if (!form.postalCode.trim()) next.postalCode = "Informe o CEP.";
     if (!form.city.trim()) next.city = "Informe sua cidade.";
@@ -168,7 +171,7 @@ export function RegistroForm({
         email,
         phone: form.phone,
         cpf_cnpj: form.cpfCnpj || null,
-        address_line1: form.addressLine1,
+        address_line1: joinStreetNumber(form.addressLine1, form.number),
         address_line2: form.addressLine2 || null,
         neighborhood: form.neighborhood,
         postal_code: form.postalCode,
@@ -313,18 +316,31 @@ export function RegistroForm({
           )}
           {errors.postalCode && <p className="text-xs text-accent">{errors.postalCode}</p>}
         </div>
-        <div className="space-y-1.5 sm:col-span-2">
-          <Label htmlFor={`${idPrefix}-addressLine1`}>Endereço</Label>
-          <Input
-            id={`${idPrefix}-addressLine1`}
-            placeholder="Rua, número"
-            value={form.addressLine1}
-            onChange={(e) => update("addressLine1", e.target.value)}
-            aria-invalid={!!errors.addressLine1}
-          />
-          {errors.addressLine1 && (
-            <p className="text-xs text-accent">{errors.addressLine1}</p>
-          )}
+        <div className="grid grid-cols-[minmax(0,1fr)_6.5rem] gap-4 sm:col-span-2">
+          <div className="space-y-1.5">
+            <Label htmlFor={`${idPrefix}-addressLine1`}>Endereço</Label>
+            <Input
+              id={`${idPrefix}-addressLine1`}
+              placeholder="Rua, avenida..."
+              value={form.addressLine1}
+              onChange={(e) => update("addressLine1", e.target.value)}
+              aria-invalid={!!errors.addressLine1}
+            />
+            {errors.addressLine1 && (
+              <p className="text-xs text-accent">{errors.addressLine1}</p>
+            )}
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor={`${idPrefix}-number`}>Número</Label>
+            <Input
+              id={`${idPrefix}-number`}
+              placeholder="123 ou S/N"
+              value={form.number}
+              onChange={(e) => update("number", e.target.value)}
+              aria-invalid={!!errors.number}
+            />
+            {errors.number && <p className="text-xs text-accent">{errors.number}</p>}
+          </div>
         </div>
         <div className="space-y-1.5 sm:col-span-2">
           <Label htmlFor={`${idPrefix}-addressLine2`}>Complemento (opcional)</Label>

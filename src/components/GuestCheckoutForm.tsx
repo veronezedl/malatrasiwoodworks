@@ -1,6 +1,6 @@
 import * as React from "react";
 import { BR_STATES } from "@/data/states";
-import { formatCep } from "@/lib/cep";
+import { formatCep, joinStreetNumber } from "@/lib/cep";
 import { useCepLookup } from "@/hooks/use-cep-lookup";
 import { saveGuestDraft, type GuestCustomerInput } from "@/lib/api/guestCheckout";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ interface FormState {
   phone: string;
   cpfCnpj: string;
   addressLine1: string;
+  number: string;
   addressLine2: string;
   neighborhood: string;
   postalCode: string;
@@ -28,6 +29,7 @@ const initialState: FormState = {
   phone: "",
   cpfCnpj: "",
   addressLine1: "",
+  number: "",
   addressLine2: "",
   neighborhood: "",
   postalCode: "",
@@ -38,7 +40,7 @@ const initialState: FormState = {
 
 // Mapeia cada campo do formulário para a coluna real de customers, usado
 // pelo autosave (ver saveGuestDraft em lib/api/guestCheckout.ts).
-const FIELD_KEY_MAP: Record<keyof FormState, keyof GuestCustomerInput> = {
+const FIELD_KEY_MAP: Record<Exclude<keyof FormState, "number">, keyof GuestCustomerInput> = {
   fullName: "full_name",
   email: "email",
   phone: "phone",
@@ -94,12 +96,17 @@ export function GuestCheckoutForm({
 
   // Para selects/checkboxes (sempre têm um valor, nunca vazios) o autosave
   // dispara na hora; os campos de texto salvam no onBlur.
-  function updateAndSave<K extends keyof FormState>(key: K, value: FormState[K]) {
+  function updateAndSave<K extends Exclude<keyof FormState, "number">>(key: K, value: FormState[K]) {
     update(key, value);
     autosave({ [FIELD_KEY_MAP[key]]: value } as Partial<GuestCustomerInput>);
   }
 
-  function handleBlur(key: keyof FormState) {
+  function saveAddressLine() {
+    const line = joinStreetNumber(form.addressLine1, form.number);
+    if (line) autosave({ address_line1: line });
+  }
+
+  function handleBlur(key: Exclude<keyof FormState, "number" | "addressLine1">) {
     const value = form[key];
     if (typeof value === "string" && !value.trim()) return;
     autosave({ [FIELD_KEY_MAP[key]]: value } as Partial<GuestCustomerInput>);
@@ -120,12 +127,14 @@ export function GuestCheckoutForm({
       city: undefined,
     }));
     autosave({
-      ...(address.street ? { address_line1: address.street } : {}),
+      ...(address.street
+        ? { address_line1: joinStreetNumber(address.street, form.number) }
+        : {}),
       ...(address.neighborhood ? { neighborhood: address.neighborhood } : {}),
       ...(address.city ? { city: address.city } : {}),
       ...(address.uf ? { region: address.uf } : {}),
     });
-    document.getElementById(`${idPrefix}-addressLine1`)?.focus();
+    document.getElementById(`${idPrefix}-${address.street ? "number" : "addressLine1"}`)?.focus();
   });
 
   function handleCepChange(value: string) {
@@ -140,6 +149,7 @@ export function GuestCheckoutForm({
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) next.email = "Email inválido.";
     if (!form.phone.trim()) next.phone = "Informe um telefone de contato.";
     if (!form.addressLine1.trim()) next.addressLine1 = "Informe seu endereço.";
+    if (!form.number.trim()) next.number = "Informe o número.";
     if (!form.neighborhood.trim()) next.neighborhood = "Informe o bairro.";
     if (!form.postalCode.trim()) next.postalCode = "Informe o CEP.";
     if (!form.city.trim()) next.city = "Informe sua cidade.";
@@ -160,7 +170,7 @@ export function GuestCheckoutForm({
           email: form.email,
           phone: form.phone,
           cpf_cnpj: form.cpfCnpj || undefined,
-          address_line1: form.addressLine1,
+          address_line1: joinStreetNumber(form.addressLine1, form.number),
           address_line2: form.addressLine2 || undefined,
           neighborhood: form.neighborhood,
           postal_code: form.postalCode,
@@ -267,19 +277,33 @@ export function GuestCheckoutForm({
           )}
           {errors.postalCode && <p className="text-xs text-accent">{errors.postalCode}</p>}
         </div>
-        <div className="space-y-1.5 sm:col-span-2">
-          <Label htmlFor={`${idPrefix}-addressLine1`}>Endereço</Label>
-          <Input
-            id={`${idPrefix}-addressLine1`}
-            placeholder="Rua, número"
-            value={form.addressLine1}
-            onChange={(e) => update("addressLine1", e.target.value)}
-            onBlur={() => handleBlur("addressLine1")}
-            aria-invalid={!!errors.addressLine1}
-          />
-          {errors.addressLine1 && (
-            <p className="text-xs text-accent">{errors.addressLine1}</p>
-          )}
+        <div className="grid grid-cols-[minmax(0,1fr)_6.5rem] gap-4 sm:col-span-2">
+          <div className="space-y-1.5">
+            <Label htmlFor={`${idPrefix}-addressLine1`}>Endereço</Label>
+            <Input
+              id={`${idPrefix}-addressLine1`}
+              placeholder="Rua, avenida..."
+              value={form.addressLine1}
+              onChange={(e) => update("addressLine1", e.target.value)}
+              onBlur={saveAddressLine}
+              aria-invalid={!!errors.addressLine1}
+            />
+            {errors.addressLine1 && (
+              <p className="text-xs text-accent">{errors.addressLine1}</p>
+            )}
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor={`${idPrefix}-number`}>Número</Label>
+            <Input
+              id={`${idPrefix}-number`}
+              placeholder="123 ou S/N"
+              value={form.number}
+              onChange={(e) => update("number", e.target.value)}
+              onBlur={saveAddressLine}
+              aria-invalid={!!errors.number}
+            />
+            {errors.number && <p className="text-xs text-accent">{errors.number}</p>}
+          </div>
         </div>
         <div className="space-y-1.5 sm:col-span-2">
           <Label htmlFor={`${idPrefix}-addressLine2`}>Complemento (opcional)</Label>

@@ -31,3 +31,9 @@ export async function lookupCep(digits: string): Promise<CepAddress | null> {
     uf: data.uf ?? "",
   };
 }
+
+export function joinStreetNumber(street: string, number: string): string {
+  const s = street.trim();
+  const n = number.trim();
+  return s && n ? `${s}, ${n}` : s || n;
+}

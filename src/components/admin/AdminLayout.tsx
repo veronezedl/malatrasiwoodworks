@@ -17,6 +17,7 @@ import {
   PackagePlus,
   Boxes,
   LayoutTemplate,
+  MapPinned,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/lib/supabase";
@@ -42,6 +43,7 @@ const NAV = [
   { to: "/admin/orcamentos", label: "Orçamentos", icon: Ruler, end: false },
   { to: "/admin/modelos-de-alca", label: "Modelos de Alça", icon: GripHorizontal, end: false },
   { to: "/admin/entregas", label: "Entregas", icon: Truck, end: false },
+  { to: "/admin/frete-por-estado", label: "Frete por Estado", icon: MapPinned, end: false },
   { to: "/admin/promocoes", label: "Promoção", icon: Megaphone, end: false },
   { to: "/admin/banners", label: "Banners da Home", icon: LayoutTemplate, end: false },
   { to: "/admin/fotos-clientes", label: "Fotos de Clientes", icon: Images, end: false },

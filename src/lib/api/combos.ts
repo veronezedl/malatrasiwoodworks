@@ -1,7 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import type { ComboWithItems } from "@/types/database";
 
-const COMBO_SELECT = "*, items:combo_items(*, product:products(name, price))";
+const COMBO_SELECT = "*, items:combo_items(*, product:products(name, price, weight_kg))";
 
 export async function listCombos(): Promise<ComboWithItems[]> {
   const { data, error } = await supabase

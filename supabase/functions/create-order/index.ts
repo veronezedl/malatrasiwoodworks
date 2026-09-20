@@ -67,7 +67,12 @@ Deno.serve(async (req) => {
     if (customerError) throw customerError;
     if (!customer) return jsonError("Complete seu perfil antes de finalizar o pedido.", 400);
 
-    const priced = await priceOrder(supabase, { items, shippingMethodId });
+    const priced = await priceOrder(supabase, {
+      items,
+      shippingMethodId,
+      deliveryUf: customer.region,
+      cartUf: body.cart_uf,
+    });
 
     const { data: order, error: orderError } = await supabase
       .from("orders")

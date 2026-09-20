@@ -15,6 +15,8 @@ export interface CartItem {
   price: number;
   // Preço da promoção ativa (substitui o preço base enquanto durar).
   promoPrice?: number | null;
+  // Peso de uma unidade (kg); null/ausente = peso não cadastrado.
+  unitWeightKg?: number | null;
   priceTiers?: PriceTier[];
   components?: { name: string; quantity: number }[];
   // Adicionais escolhidos para esta linha; o valor de cada um é multiplicado
@@ -22,6 +24,27 @@ export interface CartItem {
   addons?: { id: string; name: string; price: number }[];
   image: string;
   quantity: number;
+}
+
+// Peso total do carrinho; `complete` é falso se algum item não tem peso cadastrado.
+export function cartWeight(items: CartItem[]): { kg: number; complete: boolean } {
+  let kg = 0;
+  let complete = true;
+  for (const item of items) {
+    if (item.unitWeightKg == null) complete = false;
+    else kg += item.unitWeightKg * item.quantity;
+  }
+  return { kg: Math.round(kg * 1000) / 1000, complete };
+}
+
+// Peso de um kit = soma dos pesos dos produtos que o compõem.
+function comboWeightKg(combo: ComboWithItems): number | null {
+  let kg = 0;
+  for (const ci of combo.items) {
+    if (ci.product?.weight_kg == null) return null;
+    kg += Number(ci.product.weight_kg) * ci.quantity;
+  }
+  return kg;
 }
 
 // Soma dos adicionais da linha, por unidade.
@@ -90,6 +113,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           slug: product.slug,
           name: product.name,
           price: product.price,
+          unitWeightKg: product.weightKg,
           promoPrice: product.promoPrice,
           priceTiers: product.priceTiers,
           image: product.images[0] ?? "",
@@ -114,6 +138,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           kind: "combo",
           name: combo.name,
           price: combo.price,
+          unitWeightKg: comboWeightKg(combo),
           components: combo.items.map((ci) => ({
             name: ci.product?.name ?? "Produto",
             quantity: ci.quantity,
@@ -146,9 +171,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           }
           if (item.kind === "combo") {
             const combo = combos.find((c) => c.id === item.id);
-            if (combo && combo.price !== item.price) {
+            const weight = combo ? comboWeightKg(combo) : null;
+            if (combo && (combo.price !== item.price || weight !== (item.unitWeightKg ?? null))) {
               changed = true;
-              return { ...item, price: combo.price };
+              return { ...item, price: combo.price, unitWeightKg: weight };
             }
             return item;
           }
@@ -157,6 +183,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             product &&
             (product.price !== item.price ||
               product.promoPrice !== (item.promoPrice ?? null) ||
+              product.weightKg !== (item.unitWeightKg ?? null) ||
               JSON.stringify(product.priceTiers) !== JSON.stringify(item.priceTiers ?? []))
           ) {
             changed = true;
@@ -164,6 +191,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
               ...item,
               price: product.price,
               promoPrice: product.promoPrice,
+              unitWeightKg: product.weightKg,
               priceTiers: product.priceTiers,
             };
           }

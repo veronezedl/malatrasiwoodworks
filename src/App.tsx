@@ -44,6 +44,7 @@ import { AdminHandleModels } from "@/pages/admin/AdminHandleModels";
 import { AdminAddons } from "@/pages/admin/AdminAddons";
 import { AdminCombos } from "@/pages/admin/AdminCombos";
 import { AdminBanners } from "@/pages/admin/AdminBanners";
+import { AdminShippingRates } from "@/pages/admin/AdminShippingRates";
 import { AdminGallery } from "@/pages/admin/AdminGallery";
 import { AdminUsers } from "@/pages/admin/AdminUsers";
 
@@ -98,6 +99,7 @@ function App() {
               <Route path="adicionais" element={<AdminAddons />} />
               <Route path="kits" element={<AdminCombos />} />
               <Route path="banners" element={<AdminBanners />} />
+              <Route path="frete-por-estado" element={<AdminShippingRates />} />
               <Route path="usuarios" element={<AdminUsers />} />
             </Route>
           </Routes>

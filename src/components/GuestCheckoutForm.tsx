@@ -63,16 +63,24 @@ const DRAFT_STORAGE_KEY = "mww-guest-checkout-draft-id";
 
 interface GuestCheckoutFormProps {
   idPrefix?: string;
+  // CEP já informado no carrinho (pré-preenche e busca o endereço).
+  initialPostalCode?: string;
   onLoginClick?: () => void;
   onSubmit: (customer: GuestCustomerInput, draftCustomerId: string | null) => Promise<void>;
 }
 
 export function GuestCheckoutForm({
   idPrefix = "guest",
+  initialPostalCode,
   onLoginClick,
   onSubmit,
 }: GuestCheckoutFormProps) {
-  const [form, setForm] = React.useState<FormState>(initialState);
+  const [form, setForm] = React.useState<FormState>(() => ({
+    ...initialState,
+    postalCode: initialPostalCode ?? "",
+  }));
+  // Foco só vai para o Número quando o cliente digita o CEP, não no preenchimento inicial.
+  const skipFocusRef = React.useRef(false);
   const [errors, setErrors] = React.useState<Partial<Record<keyof FormState, string>>>({});
   const [submitting, setSubmitting] = React.useState(false);
   const [formError, setFormError] = React.useState<string | null>(null);
@@ -129,8 +137,21 @@ export function GuestCheckoutForm({
       ...(address.city ? { city: address.city } : {}),
       ...(address.uf ? { region: address.uf } : {}),
     });
+    if (skipFocusRef.current) {
+      skipFocusRef.current = false;
+      return;
+    }
     document.getElementById(`${idPrefix}-${address.street ? "number" : "addressLine1"}`)?.focus();
   });
+
+  React.useEffect(() => {
+    if (initialPostalCode && initialPostalCode.replace(/\D/g, "").length === 8) {
+      skipFocusRef.current = true;
+      cep.search(initialPostalCode);
+    }
+    // Só no primeiro render do formulário.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function handleCepChange(value: string) {
     const masked = formatCep(value);

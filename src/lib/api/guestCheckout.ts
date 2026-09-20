@@ -26,6 +26,8 @@ export interface GuestCheckoutInput {
     | { combo_id: string; quantity: number; addon_ids: string[] }
   )[];
   shipping_method_id: string;
+  // Estado do CEP informado no carrinho (frete por peso e estado).
+  cart_uf?: string | null;
   payment_method: PaymentMethod;
   engraving_text?: string | null;
   engraving_image_url?: string | null;

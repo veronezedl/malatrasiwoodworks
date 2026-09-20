@@ -12,10 +12,12 @@ import {
 import {
   useCart,
   cartItemAddonUnit,
+  cartWeight,
   cartItemUnitPrice,
   type CartItem,
 } from "@/hooks/use-cart";
 import { AddonPicker } from "@/components/AddonPicker";
+import { FREIGHT_STATUS_TEXT, useFreight } from "@/hooks/use-freight";
 import { activeTier, nextTier } from "@/lib/pricing";
 import { useSeo } from "@/hooks/use-seo";
 import { useAuth } from "@/hooks/use-auth";
@@ -83,6 +85,8 @@ export function Carrito() {
     removeItem,
     clearCart,
   } = useCart();
+  const freight = useFreight();
+  const weight = cartWeight(items);
   const { session } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
@@ -148,7 +152,14 @@ export function Carrito() {
     listActiveShippingMethods()
       .then((methods) => {
         setShippingMethods(methods);
-        setShippingMethodId((current) => current ?? methods[0]?.id ?? null);
+        // Começa pelo primeiro método de valor fixo (ex.: retirada); o frete por
+        // peso só vale depois que o cliente informa o CEP.
+        setShippingMethodId(
+          (current) =>
+            current ??
+            (methods.find((m) => m.pricing_type === "fixed") ?? methods[0])?.id ??
+            null,
+        );
       })
       .catch(() => {
         // Best-effort: sem métodos carregados, o resumo do pedido avisa que
@@ -175,7 +186,28 @@ export function Carrito() {
   }, [syncPrices]);
 
   const selectedShipping = shippingMethods.find((m) => m.id === shippingMethodId) ?? null;
-  const shippingCost = selectedShipping?.price ?? 0;
+  const selectedQuote = selectedShipping ? freight.quote(selectedShipping, weight) : null;
+  const shippingCost = selectedQuote?.price ?? 0;
+  const shippingBlocked = !!selectedQuote && selectedQuote.status !== "ok";
+
+  function shippingBlockedMessage(): string {
+    switch (selectedQuote?.status) {
+      case "need-cep":
+        return "Informe o CEP de entrega para calcular o frete.";
+      case "no-weight":
+        return "Algum item do carrinho está sem peso cadastrado. Escolha outro método ou fale com a loja.";
+      case "no-rate":
+        return "Ainda não entregamos neste estado pelo frete por peso. Escolha outro método.";
+      default:
+        return "";
+    }
+  }
+
+  function shippingPriceText(method: DbShippingMethod): string {
+    const quote = freight.quote(method, weight);
+    if (quote.status !== "ok") return FREIGHT_STATUS_TEXT[quote.status];
+    return quote.price === 0 ? "Grátis" : currency.format(quote.price);
+  }
   const total = subtotal + addonsTotal + shippingCost;
 
   // Depois de criar o pedido: se for Mercado Pago, tira o cliente do site e
@@ -224,6 +256,10 @@ export function Carrito() {
       );
       return;
     }
+    if (shippingBlocked) {
+      showToast("Frete indisponível", shippingBlockedMessage());
+      return;
+    }
 
     setPlacing(true);
     try {
@@ -252,6 +288,7 @@ export function Carrito() {
         items,
         PAYMENT_METHOD,
         selectedShipping,
+        freight.uf,
         { engravingText: engravingText || null, engravingImageUrl },
       );
 
@@ -278,6 +315,11 @@ export function Carrito() {
       return;
     }
 
+    if (shippingBlocked) {
+      showToast("Frete indisponível", shippingBlockedMessage());
+      return;
+    }
+
     const engravingImageUrl = engravingFile
       ? await uploadEngravingImage(engravingFile)
       : null;
@@ -287,6 +329,7 @@ export function Carrito() {
       customer,
       items: toOrderLines(items),
       shipping_method_id: selectedShipping.id,
+      cart_uf: freight.uf,
       payment_method: PAYMENT_METHOD,
       engraving_text: engravingText || null,
       engraving_image_url: engravingImageUrl,
@@ -332,6 +375,33 @@ export function Carrito() {
   const orderSummary = (
     <>
       <div className="mb-5">
+        <Label htmlFor="cart-cep" className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+          CEP de entrega
+        </Label>
+        <Input
+          id="cart-cep"
+          inputMode="numeric"
+          autoComplete="postal-code"
+          placeholder="00000-000"
+          maxLength={9}
+          className="mt-2"
+          value={freight.cep}
+          onChange={(e) => freight.onCepChange(e.target.value)}
+        />
+        <p className="mt-1 text-xs text-text-muted">
+          {freight.lookupStatus === "loading"
+            ? "Buscando CEP..."
+            : freight.lookupStatus === "notfound"
+              ? "CEP não encontrado."
+              : freight.lookupStatus === "error"
+                ? "Não foi possível consultar o CEP agora."
+                : freight.uf
+                  ? `Entrega para ${freight.city ?? ""}${freight.city ? " · " : ""}${freight.uf}`
+                  : "Informe o CEP para calcular o frete por peso."}
+        </p>
+      </div>
+
+      <div className="mb-5">
         <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">
           Método de entrega
         </p>
@@ -365,10 +435,10 @@ export function Carrito() {
                 </span>
                 <span className="flex shrink-0 items-center gap-2">
                   {selectedShipping && (
-                    <span className="font-semibold text-text">
-                      {selectedShipping.price === 0
-                        ? "Grátis"
-                        : currency.format(selectedShipping.price)}
+                    <span
+                      className={`font-semibold ${shippingBlocked ? "text-accent" : "text-text"}`}
+                    >
+                      {shippingPriceText(selectedShipping)}
                     </span>
                   )}
                   <ChevronDown className="size-4 text-text-muted" />
@@ -422,7 +492,7 @@ export function Carrito() {
                         <span
                           className={`shrink-0 font-semibold ${selected ? "text-accent" : "text-text"}`}
                         >
-                          {method.price === 0 ? "Grátis" : currency.format(method.price)}
+                          {shippingPriceText(method)}
                         </span>
                       </button>
                     </PopoverClose>
@@ -431,6 +501,9 @@ export function Carrito() {
               </div>
             </PopoverContent>
           </Popover>
+        )}
+        {shippingBlocked && (
+          <p className="mt-2 text-xs text-accent">{shippingBlockedMessage()}</p>
         )}
       </div>
 
@@ -450,9 +523,19 @@ export function Carrito() {
             Entrega{selectedShipping ? ` (${selectedShipping.name})` : ""}
           </span>
           <span className="shrink-0">
-            {shippingCost === 0 ? "Grátis" : currency.format(shippingCost)}
+            {shippingBlocked
+              ? "—"
+              : shippingCost === 0
+                ? "Grátis"
+                : currency.format(shippingCost)}
           </span>
         </div>
+        {selectedQuote?.detail && (
+          <p className="text-xs">
+            {String(selectedQuote.detail.kg).replace(".", ",")} kg ×{" "}
+            {currency.format(selectedQuote.detail.ratePerKg)}/kg ({freight.uf})
+          </p>
+        )}
       </div>
       <div className="mt-2 flex items-center justify-between border-t border-black/10 pt-2 font-heading text-lg font-bold text-primary">
         <span>Total</span>
@@ -468,7 +551,7 @@ export function Carrito() {
         className="mt-5 w-full"
         size="lg"
         onClick={handleCheckout}
-        disabled={placing || loadingShipping || !selectedShipping}
+        disabled={placing || loadingShipping || !selectedShipping || shippingBlocked}
       >
         {placing ? "Processando..." : "Finalizar pedido"}
       </Button>
@@ -705,6 +788,7 @@ export function Carrito() {
           ) : (
             <GuestCheckoutForm
               idPrefix="cart-guest"
+              initialPostalCode={freight.cep}
               onLoginClick={() => setAuthMode("login")}
               onSubmit={handleGuestCheckout}
             />

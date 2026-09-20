@@ -73,12 +73,14 @@ export async function createOrder(
   items: CartItem[],
   paymentMethod: PaymentMethod,
   shippingMethod: DbShippingMethod,
+  cartUf: string | null,
   engraving?: EngravingInput,
 ): Promise<DbOrder> {
   const { data, error } = await supabase.functions.invoke("create-order", {
     body: {
       items: toOrderLines(items),
       shipping_method_id: shippingMethod.id,
+      cart_uf: cartUf,
       payment_method: paymentMethod,
       engraving_text: engraving?.engravingText || null,
       engraving_image_url: engraving?.engravingImageUrl || null,

@@ -30,6 +30,7 @@ const emptyForm = {
   minDays: "",
   maxDays: "",
   price: "",
+  byWeight: false,
   active: true,
   visibleInStore: true,
 };
@@ -42,6 +43,7 @@ function methodToForm(method: DbShippingMethod): ShippingFormState {
     minDays: String(method.min_days),
     maxDays: String(method.max_days),
     price: String(method.price),
+    byWeight: method.pricing_type === "weight",
     active: method.active,
     visibleInStore: method.visible_in_store,
   };
@@ -99,12 +101,28 @@ function ShippingFormFields({
             type="number"
             step="0.01"
             min="0"
-            value={form.price}
+            value={form.byWeight ? "" : form.price}
+            placeholder={form.byWeight ? "Por peso" : ""}
+            disabled={form.byWeight}
             onChange={(e) => onChange({ ...form, price: e.target.value })}
-            required
+            required={!form.byWeight}
           />
         </div>
       </div>
+
+      <label className="mt-4 flex items-center gap-2 text-sm text-text">
+        <input
+          type="checkbox"
+          className="size-4 accent-accent"
+          checked={form.byWeight}
+          onChange={(e) => onChange({ ...form, byWeight: e.target.checked })}
+        />
+        Calcular o valor por peso e estado
+      </label>
+      <p className="mt-1 text-xs text-text-muted">
+        O frete vira: valor por kg do estado do CEP (tabela "Frete por Estado") x peso dos
+        itens do carrinho. O campo de preço fixo é ignorado.
+      </p>
 
       <label className="mt-4 flex items-center gap-2 text-sm text-text">
         <input
@@ -156,7 +174,8 @@ function EditShippingDialog({ method, onClose, onSaved }: EditShippingDialogProp
         name: form.name,
         min_days: Number(form.minDays),
         max_days: Number(form.maxDays),
-        price: Number(form.price),
+        price: form.byWeight ? 0 : Number(form.price),
+        pricing_type: form.byWeight ? "weight" : "fixed",
         active: form.active,
         visible_in_store: form.visibleInStore,
       });
@@ -213,7 +232,8 @@ export function AdminShipping() {
         name: form.name,
         min_days: Number(form.minDays),
         max_days: Number(form.maxDays),
-        price: Number(form.price),
+        price: form.byWeight ? 0 : Number(form.price),
+        pricing_type: form.byWeight ? "weight" : "fixed",
         active: form.active,
         visible_in_store: form.visibleInStore,
       });
@@ -305,7 +325,11 @@ export function AdminShipping() {
                     </p>
                   </div>
                   <p className="shrink-0 font-semibold text-primary">
-                    {method.price === 0 ? "Grátis" : currency.format(method.price)}
+                    {method.pricing_type === "weight"
+                      ? "Por peso e estado"
+                      : method.price === 0
+                        ? "Grátis"
+                        : currency.format(method.price)}
                   </p>
                 </div>
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
@@ -365,7 +389,11 @@ export function AdminShipping() {
                         : `${method.min_days}–${method.max_days} dias`}
                     </td>
                     <td className="px-4 py-3 font-semibold text-primary">
-                      {method.price === 0 ? "Grátis" : currency.format(method.price)}
+                      {method.pricing_type === "weight"
+                      ? "Por peso e estado"
+                      : method.price === 0
+                        ? "Grátis"
+                        : currency.format(method.price)}
                     </td>
                     <td className="px-4 py-3">
                       <button onClick={() => toggleActive(method)}>

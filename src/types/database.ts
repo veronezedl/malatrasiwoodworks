@@ -267,9 +267,17 @@ export interface DbShippingMethod {
   min_days: number;
   max_days: number;
   price: number;
+  // 'fixed' usa price; 'weight' calcula pelo peso do carrinho x valor/kg do estado.
+  pricing_type: "fixed" | "weight";
   active: boolean;
   visible_in_store: boolean;
   created_at: string;
+  updated_at: string;
+}
+
+export interface DbShippingRate {
+  uf: string;
+  price_per_kg: number;
   updated_at: string;
 }
 
@@ -320,7 +328,7 @@ export interface DbComboItem {
 
 export interface ComboWithItems extends DbCombo {
   items: (DbComboItem & {
-    product: { name: string; price: number } | null;
+    product: { name: string; price: number; weight_kg: number | null } | null;
   })[];
 }
 

@@ -90,6 +90,8 @@ Deno.serve(async (req) => {
     const priced = await priceOrder(supabase, {
       items,
       shippingMethodId,
+      deliveryUf: customerInput!.region,
+      cartUf: body.cart_uf,
     });
 
     const customerFields = {

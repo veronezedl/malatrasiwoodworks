@@ -69,7 +69,6 @@ Deno.serve(async (req) => {
     const draftCustomerId: string | null = body.draftCustomerId ?? null;
     const customerInput: CustomerInput | undefined = body.customer;
     const items: OrderLineInput[] = body.items ?? [];
-    const addonIds: string[] = body.addon_ids ?? [];
     const shippingMethodId: string | undefined = body.shipping_method_id;
     const paymentMethod: string = body.payment_method;
     const engravingText: string | null = body.engraving_text || null;
@@ -90,7 +89,6 @@ Deno.serve(async (req) => {
     // nunca confia em preços do cliente.
     const priced = await priceOrder(supabase, {
       items,
-      addonIds,
       shippingMethodId,
     });
 

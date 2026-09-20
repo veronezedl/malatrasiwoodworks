@@ -45,7 +45,6 @@ Deno.serve(async (req) => {
 
     const body = await req.json();
     const items: OrderLineInput[] = body.items ?? [];
-    const addonIds: string[] = body.addon_ids ?? [];
     const shippingMethodId: string | undefined = body.shipping_method_id;
     const paymentMethod: string = body.payment_method;
     const engravingText: string | null = body.engraving_text || null;
@@ -68,7 +67,7 @@ Deno.serve(async (req) => {
     if (customerError) throw customerError;
     if (!customer) return jsonError("Complete seu perfil antes de finalizar o pedido.", 400);
 
-    const priced = await priceOrder(supabase, { items, addonIds, shippingMethodId });
+    const priced = await priceOrder(supabase, { items, shippingMethodId });
 
     const { data: order, error: orderError } = await supabase
       .from("orders")

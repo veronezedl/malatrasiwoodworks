@@ -1,5 +1,5 @@
 import { supabase } from "@/lib/supabase";
-import type { DbHeroBanner } from "@/types/database";
+import type { DbHeroBanner, DbHeroSettings } from "@/types/database";
 
 export async function listHeroBanners(): Promise<DbHeroBanner[]> {
   const { data, error } = await supabase
@@ -51,5 +51,26 @@ export async function swapHeroBannerOrder(
 
 export async function deleteHeroBanner(id: string): Promise<void> {
   const { error } = await supabase.from("hero_banners").delete().eq("id", id);
+  if (error) throw error;
+}
+
+export const DEFAULT_HERO_SETTINGS = { interval_seconds: 5, opacity: 100 };
+
+export type HeroSettingsInput = Pick<DbHeroSettings, "interval_seconds" | "opacity">;
+
+export async function getHeroSettings(): Promise<HeroSettingsInput> {
+  const { data, error } = await supabase
+    .from("hero_settings")
+    .select("interval_seconds, opacity")
+    .eq("id", 1)
+    .maybeSingle();
+  if (error) throw error;
+  return data ?? DEFAULT_HERO_SETTINGS;
+}
+
+export async function saveHeroSettings(input: HeroSettingsInput): Promise<void> {
+  const { error } = await supabase
+    .from("hero_settings")
+    .upsert({ id: 1, ...input });
   if (error) throw error;
 }

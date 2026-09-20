@@ -13,6 +13,8 @@ export interface OrderLineInput {
   product_id?: string;
   combo_id?: string;
   quantity: number;
+  // Adicionais desta linha; o valor de cada um é multiplicado pela quantidade.
+  addon_ids?: string[];
 }
 
 export interface PricedLine {
@@ -55,12 +57,10 @@ export async function priceOrder(
   supabase: SupabaseClient,
   input: {
     items: OrderLineInput[];
-    addonIds?: string[];
     shippingMethodId?: string;
   },
 ): Promise<PricedOrder> {
   const { items } = input;
-  const addonIds = [...new Set(input.addonIds ?? [])];
 
   if (!Array.isArray(items) || items.length === 0) {
     throw new PricingError("O carrinho está vazio.");
@@ -82,6 +82,8 @@ export async function priceOrder(
   const productItems = items.filter((i) => i.product_id);
   const comboItems = items.filter((i) => i.combo_id);
   const lines: PricedLine[] = [];
+  // Adicionais de cada linha, resolvidos depois de conhecermos o nome da linha.
+  const lineAddons: { name: string; quantity: number; addonIds: string[] }[] = [];
 
   if (productItems.length > 0) {
     const ids = [...new Set(productItems.map((i) => i.product_id!))];
@@ -102,6 +104,11 @@ export async function priceOrder(
         product_name: product.name,
         unit_price: unitPriceForQty(product.price, product.price_tiers, item.quantity),
         quantity: item.quantity,
+      });
+      lineAddons.push({
+        name: product.name,
+        quantity: item.quantity,
+        addonIds: [...new Set(item.addon_ids ?? [])],
       });
     }
   }
@@ -133,28 +140,37 @@ export async function priceOrder(
         unit_price: round2(combo.price),
         quantity: item.quantity,
       });
+      lineAddons.push({
+        name: `Kit: ${combo.name}`,
+        quantity: item.quantity,
+        addonIds: [...new Set(item.addon_ids ?? [])],
+      });
     }
   }
 
-  if (addonIds.length > 0) {
+  const allAddonIds = [...new Set(lineAddons.flatMap((l) => l.addonIds))];
+  if (allAddonIds.length > 0) {
     const { data: addons, error } = await supabase
       .from("addons")
       .select("id, name, price, active")
-      .in("id", addonIds);
+      .in("id", allAddonIds);
     if (error) throw error;
     const map = new Map((addons ?? []).map((a) => [a.id, a]));
-    for (const id of addonIds) {
-      const addon = map.get(id);
-      if (!addon || !addon.active) {
-        throw new PricingError("Algum adicional escolhido não está mais disponível.");
+    for (const line of lineAddons) {
+      for (const id of line.addonIds) {
+        const addon = map.get(id);
+        if (!addon || !addon.active) {
+          throw new PricingError("Algum adicional escolhido não está mais disponível.");
+        }
+        // Cobrado por unidade: quantidade do adicional = quantidade do item.
+        lines.push({
+          product_id: null,
+          combo_id: null,
+          product_name: `Adicional: ${addon.name} (${line.name})`,
+          unit_price: round2(addon.price),
+          quantity: line.quantity,
+        });
       }
-      lines.push({
-        product_id: null,
-        combo_id: null,
-        product_name: `Adicional: ${addon.name}`,
-        unit_price: round2(addon.price),
-        quantity: 1,
-      });
     }
   }
 

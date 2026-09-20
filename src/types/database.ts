@@ -329,3 +329,10 @@ export interface DbHeroBanner {
   created_at: string;
   updated_at: string;
 }
+
+export interface DbHeroSettings {
+  id: number;
+  interval_seconds: number;
+  opacity: number;
+  updated_at: string;
+}

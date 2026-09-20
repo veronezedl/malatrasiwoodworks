@@ -1,6 +1,6 @@
 import * as React from "react";
 import type { Product } from "@/data/products";
-import type { ComboWithItems, PriceTier } from "@/types/database";
+import type { ComboWithItems, DbAddon, PriceTier } from "@/types/database";
 import { unitPriceForQty } from "@/lib/pricing";
 
 export interface CartItem {
@@ -15,8 +15,16 @@ export interface CartItem {
   price: number;
   priceTiers?: PriceTier[];
   components?: { name: string; quantity: number }[];
+  // Adicionais escolhidos para esta linha; o valor de cada um é multiplicado
+  // pela quantidade da linha.
+  addons?: { id: string; name: string; price: number }[];
   image: string;
   quantity: number;
+}
+
+// Soma dos adicionais da linha, por unidade.
+export function cartItemAddonUnit(item: CartItem): number {
+  return (item.addons ?? []).reduce((sum, a) => sum + a.price, 0);
 }
 
 // Preço unitário efetivo da linha (já com a faixa progressiva atingida).
@@ -29,9 +37,15 @@ interface CartContextValue {
   items: CartItem[];
   itemCount: number;
   subtotal: number;
+  addonsTotal: number;
   addItem: (product: Product, quantity?: number) => boolean;
   addCombo: (combo: ComboWithItems) => boolean;
-  syncPrices: (products: Product[], combos: ComboWithItems[]) => void;
+  syncPrices: (
+    products: Product[],
+    combos: ComboWithItems[],
+    addons: DbAddon[],
+  ) => void;
+  setItemAddons: (slug: string, addons: DbAddon[]) => void;
   removeItem: (slug: string) => void;
   setQuantity: (slug: string, quantity: number) => void;
   clearCart: () => void;
@@ -112,10 +126,21 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // Atualiza preços/faixas dos itens do carrinho com o catálogo atual, para
   // não mostrar um valor antigo guardado no localStorage.
   const syncPrices = React.useCallback(
-    (products: Product[], combos: ComboWithItems[]) => {
+    (products: Product[], combos: ComboWithItems[], addons: DbAddon[]) => {
       setItems((prev) => {
         let changed = false;
-        const next = prev.map((item) => {
+        const next = prev.map((baseItem) => {
+          let item = baseItem;
+          if (item.addons?.length) {
+            const fresh = item.addons
+              .map((a) => addons.find((x) => x.id === a.id))
+              .filter((a): a is DbAddon => !!a)
+              .map((a) => ({ id: a.id, name: a.name, price: a.price }));
+            if (JSON.stringify(fresh) !== JSON.stringify(item.addons)) {
+              changed = true;
+              item = { ...item, addons: fresh };
+            }
+          }
           if (item.kind === "combo") {
             const combo = combos.find((c) => c.id === item.id);
             if (combo && combo.price !== item.price) {
@@ -141,6 +166,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
+  const setItemAddons = React.useCallback((slug: string, addons: DbAddon[]) => {
+    setItems((prev) =>
+      prev.map((i) =>
+        i.slug === slug
+          ? { ...i, addons: addons.map((a) => ({ id: a.id, name: a.name, price: a.price })) }
+          : i,
+      ),
+    );
+  }, []);
+
   const removeItem = React.useCallback((slug: string) => {
     setItems((prev) => prev.filter((i) => i.slug !== slug));
   }, []);
@@ -156,20 +191,35 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const itemCount = items.reduce((sum, i) => sum + i.quantity, 0);
   const subtotal = items.reduce((sum, i) => sum + i.quantity * cartItemUnitPrice(i), 0);
+  const addonsTotal = items.reduce((sum, i) => sum + i.quantity * cartItemAddonUnit(i), 0);
 
   const value = React.useMemo(
     () => ({
       items,
       itemCount,
       subtotal,
+      addonsTotal,
       addItem,
       addCombo,
       syncPrices,
+      setItemAddons,
       removeItem,
       setQuantity,
       clearCart,
     }),
-    [items, itemCount, subtotal, addItem, addCombo, syncPrices, removeItem, setQuantity, clearCart],
+    [
+      items,
+      itemCount,
+      subtotal,
+      addonsTotal,
+      addItem,
+      addCombo,
+      syncPrices,
+      setItemAddons,
+      removeItem,
+      setQuantity,
+      clearCart,
+    ],
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

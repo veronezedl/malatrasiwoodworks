@@ -5,7 +5,7 @@ import { HeroBanner } from "@/components/HeroBanner";
 import { useHeroBanners } from "@/hooks/use-hero-banners";
 
 export function Hero() {
-  const banners = useHeroBanners();
+  const { banners, settings } = useHeroBanners();
 
   return (
     <section className="relative overflow-hidden bg-primary">
@@ -55,6 +55,8 @@ export function Hero() {
 
         <HeroBanner
           banners={banners}
+          intervalSeconds={settings.interval_seconds}
+          opacity={settings.opacity}
           className="aspect-[4/3] w-full lg:aspect-[4/5] lg:max-h-[34rem] lg:justify-self-end"
         />
       </div>

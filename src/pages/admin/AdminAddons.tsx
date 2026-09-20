@@ -86,7 +86,7 @@ function AddonFormFields({
         Ativo
       </label>
       <p className="mt-1 text-xs text-text-muted">
-        Desative para adicionais que não devem mais aparecer no checkout.
+        Desative para adicionais que não devem mais aparecer no carrinho.
       </p>
     </>
   );
@@ -146,7 +146,7 @@ function EditAddonDialog({ addon, onClose, onSaved }: EditAddonDialogProps) {
 export function AdminAddons() {
   useSeo(
     "Adicionais · Admin Malatrasi WoodWorks",
-    "Gestão dos adicionais oferecidos no checkout do pedido.",
+    "Gestão dos adicionais oferecidos em cada item do carrinho.",
   );
   const { showToast } = useToast();
   const [addons, setAddons] = React.useState<DbAddon[]>([]);
@@ -206,7 +206,7 @@ export function AdminAddons() {
     <div>
       <h1 className="font-heading text-2xl font-bold text-primary">Adicionais</h1>
       <p className="mt-1 text-sm text-text-muted">
-        Extras que o cliente pode marcar no checkout (ex.: embalagem para presente). O valor é somado uma vez ao total do pedido.
+        Extras que o cliente pode marcar em cada item do carrinho (ex.: embalagem para presente). O valor é por unidade: com 10 itens, o adicional é cobrado 10 vezes.
       </p>
 
       <form

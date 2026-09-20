@@ -21,8 +21,10 @@ export interface GuestCustomerInput {
 export interface GuestCheckoutInput {
   draftCustomerId: string | null;
   customer: GuestCustomerInput;
-  items: ({ product_id: string; quantity: number } | { combo_id: string; quantity: number })[];
-  addon_ids: string[];
+  items: (
+    | { product_id: string; quantity: number; addon_ids: string[] }
+    | { combo_id: string; quantity: number; addon_ids: string[] }
+  )[];
   shipping_method_id: string;
   payment_method: PaymentMethod;
   engraving_text?: string | null;

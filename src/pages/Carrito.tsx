@@ -8,10 +8,14 @@ import {
   ChevronDown,
   CheckCircle2,
   PenLine,
-  Check,
-  PackagePlus,
 } from "lucide-react";
-import { useCart, cartItemUnitPrice, type CartItem } from "@/hooks/use-cart";
+import {
+  useCart,
+  cartItemAddonUnit,
+  cartItemUnitPrice,
+  type CartItem,
+} from "@/hooks/use-cart";
+import { AddonPicker } from "@/components/AddonPicker";
 import { activeTier, nextTier } from "@/lib/pricing";
 import { useSeo } from "@/hooks/use-seo";
 import { useAuth } from "@/hooks/use-auth";
@@ -68,8 +72,17 @@ export function Carrito() {
     "Seu carrinho · Malatrasi WoodWorks",
     "Revise os produtos do seu carrinho antes de finalizar sua compra na Malatrasi WoodWorks.",
   );
-  const { items, subtotal, addItem, syncPrices, setQuantity, removeItem, clearCart } =
-    useCart();
+  const {
+    items,
+    subtotal,
+    addonsTotal,
+    addItem,
+    syncPrices,
+    setItemAddons,
+    setQuantity,
+    removeItem,
+    clearCart,
+  } = useCart();
   const { session } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
@@ -79,7 +92,6 @@ export function Carrito() {
   const [shippingMethodId, setShippingMethodId] = React.useState<string | null>(null);
   const [loadingShipping, setLoadingShipping] = React.useState(true);
   const [addons, setAddons] = React.useState<DbAddon[]>([]);
-  const [selectedAddonIds, setSelectedAddonIds] = React.useState<string[]>([]);
   const [successOrder, setSuccessOrder] = React.useState<DbOrder | null>(null);
   const [mobileSummaryOpen, setMobileSummaryOpen] = React.useState(false);
   const [loginDialogOpen, setLoginDialogOpen] = React.useState(false);
@@ -155,15 +167,13 @@ export function Carrito() {
 
   // Atualiza preços/faixas dos itens salvos no carrinho com o catálogo atual.
   React.useEffect(() => {
-    Promise.all([fetchActiveProducts(), listActiveCombos()])
-      .then(([products, combos]) => syncPrices(products, combos))
+    Promise.all([fetchActiveProducts(), listActiveCombos(), listActiveAddons()])
+      .then(([products, combos, activeAddons]) => syncPrices(products, combos, activeAddons))
       .catch(() => {
         // Best-effort: o servidor recalcula tudo de qualquer forma ao finalizar.
       });
   }, [syncPrices]);
 
-  const selectedAddons = addons.filter((a) => selectedAddonIds.includes(a.id));
-  const addonsTotal = selectedAddons.reduce((sum, a) => sum + a.price, 0);
   const selectedShipping = shippingMethods.find((m) => m.id === shippingMethodId) ?? null;
   const shippingCost = selectedShipping?.price ?? 0;
   const total = subtotal + addonsTotal + shippingCost;
@@ -240,7 +250,6 @@ export function Carrito() {
 
       const order = await createOrder(
         items,
-        selectedAddons.map((a) => a.id),
         PAYMENT_METHOD,
         selectedShipping,
         { engravingText: engravingText || null, engravingImageUrl },
@@ -277,7 +286,6 @@ export function Carrito() {
       draftCustomerId,
       customer,
       items: toOrderLines(items),
-      addon_ids: selectedAddons.map((a) => a.id),
       shipping_method_id: selectedShipping.id,
       payment_method: PAYMENT_METHOD,
       engraving_text: engravingText || null,
@@ -426,116 +434,17 @@ export function Carrito() {
         )}
       </div>
 
-      {addons.length > 0 && (
-        <div className="mb-5">
-          <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">
-            Adicionais (opcional)
-          </p>
-          <Popover>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                className="mt-2 flex w-full items-center justify-between gap-3 rounded-brand border border-black/10 bg-white px-3 py-2.5 text-left text-sm transition-colors hover:border-black/20 data-[state=open]:border-accent"
-              >
-                <span className="flex min-w-0 items-center gap-2">
-                  <PackagePlus className="size-4 shrink-0 text-accent" />
-                  <span className="truncate font-medium text-text">
-                    {selectedAddons.length === 0
-                      ? "Escolha os adicionais"
-                      : selectedAddons.length === 1
-                        ? selectedAddons[0].name
-                        : `${selectedAddons.length} adicionais selecionados`}
-                  </span>
-                </span>
-                <span className="flex shrink-0 items-center gap-2">
-                  {addonsTotal > 0 && (
-                    <span className="font-semibold text-accent">
-                      + {currency.format(addonsTotal)}
-                    </span>
-                  )}
-                  <ChevronDown className="size-4 text-text-muted" />
-                </span>
-              </button>
-            </PopoverTrigger>
-
-            <PopoverContent>
-              <div className="mb-3 flex items-center justify-between gap-2">
-                <p className="font-heading text-sm font-semibold text-primary">
-                  Escolha os adicionais
-                </p>
-                <PopoverClose
-                  aria-label="Fechar"
-                  className="rounded-full p-1 text-text-muted transition-colors hover:bg-bg-muted"
-                >
-                  <X className="size-4" />
-                </PopoverClose>
-              </div>
-              <div className="space-y-2">
-                {addons.map((addon) => {
-                  const selected = selectedAddonIds.includes(addon.id);
-                  return (
-                    <button
-                      key={addon.id}
-                      type="button"
-                      role="checkbox"
-                      aria-checked={selected}
-                      onClick={() =>
-                        setSelectedAddonIds((prev) =>
-                          prev.includes(addon.id)
-                            ? prev.filter((id) => id !== addon.id)
-                            : [...prev, addon.id],
-                        )
-                      }
-                      className={`flex w-full items-center justify-between gap-3 rounded-brand border px-3 py-2.5 text-left text-sm transition-colors ${
-                        selected
-                          ? "border-accent bg-accent/10"
-                          : "border-black/10 bg-white hover:border-black/20"
-                      }`}
-                    >
-                      <span className="flex min-w-0 items-center gap-2">
-                        <span
-                          className={`flex size-4 shrink-0 items-center justify-center rounded border ${
-                            selected
-                              ? "border-accent bg-accent text-white"
-                              : "border-black/20"
-                          }`}
-                        >
-                          {selected && <Check className="size-3" />}
-                        </span>
-                        <span
-                          className={`truncate font-medium ${selected ? "text-accent" : "text-text"}`}
-                        >
-                          {addon.name}
-                        </span>
-                      </span>
-                      <span className="shrink-0 font-semibold text-accent">
-                        {addon.price === 0 ? "Grátis" : `+ ${currency.format(addon.price)}`}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-              <PopoverClose asChild>
-                <Button type="button" size="sm" className="mt-3 w-full">
-                  Concluir
-                </Button>
-              </PopoverClose>
-            </PopoverContent>
-          </Popover>
-        </div>
-      )}
-
       <div className="space-y-1.5 border-t border-black/10 pt-4 text-sm text-text-muted">
         <div className="flex items-center justify-between gap-2">
           <span>Subtotal</span>
           <span>{currency.format(subtotal)}</span>
         </div>
-        {selectedAddons.map((addon) => (
-          <div key={addon.id} className="flex items-center justify-between gap-2">
-            <span className="truncate">{addon.name}</span>
-            <span className="shrink-0 text-accent">+ {currency.format(addon.price)}</span>
+        {addonsTotal > 0 && (
+          <div className="flex items-center justify-between gap-2">
+            <span>Adicionais</span>
+            <span className="shrink-0 text-accent">+ {currency.format(addonsTotal)}</span>
           </div>
-        ))}
+        )}
         <div className="flex items-center justify-between gap-2">
           <span className="truncate">
             Entrega{selectedShipping ? ` (${selectedShipping.name})` : ""}
@@ -578,6 +487,7 @@ export function Carrito() {
           {items.map((item: CartItem) => {
             const isCombo = item.kind === "combo";
             const unit = cartItemUnitPrice(item);
+            const addonUnit = cartItemAddonUnit(item);
             const tier = isCombo ? null : activeTier(item.priceTiers, item.quantity);
             const upcoming = isCombo ? null : nextTier(item.priceTiers, item.quantity);
             return (
@@ -625,6 +535,12 @@ export function Carrito() {
                     {currency.format(upcoming.unit_price)} cada
                   </p>
                 )}
+                <AddonPicker
+                  addons={addons}
+                  selectedIds={(item.addons ?? []).map((a) => a.id)}
+                  quantity={item.quantity}
+                  onChange={(selected) => setItemAddons(item.slug, selected)}
+                />
               </div>
 
               <div className="flex basis-full items-center justify-between gap-4 sm:basis-auto sm:justify-end">
@@ -651,7 +567,7 @@ export function Carrito() {
                 </div>
 
                 <p className="w-20 text-right font-heading text-sm font-bold text-primary">
-                  {currency.format(unit * item.quantity)}
+                  {currency.format((unit + addonUnit) * item.quantity)}
                 </p>
 
                 <button

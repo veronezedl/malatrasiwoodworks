@@ -44,11 +44,12 @@ export async function uploadEngravingImage(file: File): Promise<string> {
 // Linhas do pedido enviadas ao servidor (só ids e quantidades — o preço é
 // sempre recalculado lá).
 export function toOrderLines(items: CartItem[]) {
-  return items.map((item) =>
-    item.kind === "combo"
-      ? { combo_id: item.id, quantity: item.quantity }
-      : { product_id: item.id, quantity: item.quantity },
-  );
+  return items.map((item) => {
+    const addon_ids = (item.addons ?? []).map((a) => a.id);
+    return item.kind === "combo"
+      ? { combo_id: item.id, quantity: item.quantity, addon_ids }
+      : { product_id: item.id, quantity: item.quantity, addon_ids };
+  });
 }
 
 // O SDK não expõe a mensagem real da função em error.message (fica
@@ -70,7 +71,6 @@ export async function functionErrorMessage(error: Error): Promise<string> {
 // faixas, kits, adicionais e frete a partir do banco e grava o pedido.
 export async function createOrder(
   items: CartItem[],
-  addonIds: string[],
   paymentMethod: PaymentMethod,
   shippingMethod: DbShippingMethod,
   engraving?: EngravingInput,
@@ -78,7 +78,6 @@ export async function createOrder(
   const { data, error } = await supabase.functions.invoke("create-order", {
     body: {
       items: toOrderLines(items),
-      addon_ids: addonIds,
       shipping_method_id: shippingMethod.id,
       payment_method: paymentMethod,
       engraving_text: engraving?.engravingText || null,

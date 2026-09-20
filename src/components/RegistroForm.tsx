@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RequiredMark } from "@/components/ui/required-mark";
 import { Select } from "@/components/ui/select";
 
 interface FormState {
@@ -115,6 +116,7 @@ export function RegistroForm({
     if (!form.neighborhood.trim()) next.neighborhood = "Informe o bairro.";
     if (!form.postalCode.trim()) next.postalCode = "Informe o CEP.";
     if (!form.city.trim()) next.city = "Informe sua cidade.";
+    if (!form.region) next.region = "Selecione o estado.";
     setErrors(next);
     return Object.keys(next).length === 0;
   }
@@ -217,26 +219,28 @@ export function RegistroForm({
           </h2>
           <div className="mt-3 grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label htmlFor={`${idPrefix}-email`}>Email</Label>
+              <Label htmlFor={`${idPrefix}-email`}>Email<RequiredMark /></Label>
               <Input
                 id={`${idPrefix}-email`}
                 type="email"
                 value={form.email}
                 onChange={(e) => update("email", e.target.value)}
                 aria-invalid={!!errors.email}
+                aria-required="true"
               />
               {errors.email && (
                 <p className="text-xs text-accent">{errors.email}</p>
               )}
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor={`${idPrefix}-password`}>Senha</Label>
+              <Label htmlFor={`${idPrefix}-password`}>Senha<RequiredMark /></Label>
               <Input
                 id={`${idPrefix}-password`}
                 type="password"
                 value={form.password}
                 onChange={(e) => update("password", e.target.value)}
                 aria-invalid={!!errors.password}
+                aria-required="true"
               />
               {errors.password && (
                 <p className="text-xs text-accent">{errors.password}</p>
@@ -251,19 +255,20 @@ export function RegistroForm({
       </h2>
       <div className="mt-3 grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5 sm:col-span-2">
-          <Label htmlFor={`${idPrefix}-fullName`}>Nome completo</Label>
+          <Label htmlFor={`${idPrefix}-fullName`}>Nome completo<RequiredMark /></Label>
           <Input
             id={`${idPrefix}-fullName`}
             value={form.fullName}
             onChange={(e) => update("fullName", e.target.value)}
             aria-invalid={!!errors.fullName}
+            aria-required="true"
           />
           {errors.fullName && (
             <p className="text-xs text-accent">{errors.fullName}</p>
           )}
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor={`${idPrefix}-phone`}>Telefone (WhatsApp)</Label>
+          <Label htmlFor={`${idPrefix}-phone`}>Telefone (WhatsApp)<RequiredMark /></Label>
           <Input
             id={`${idPrefix}-phone`}
             type="tel"
@@ -271,6 +276,7 @@ export function RegistroForm({
             value={form.phone}
             onChange={(e) => update("phone", e.target.value)}
             aria-invalid={!!errors.phone}
+            aria-required="true"
           />
           {errors.phone && (
             <p className="text-xs text-accent">{errors.phone}</p>
@@ -291,7 +297,7 @@ export function RegistroForm({
       </h2>
       <div className="mt-3 grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5 sm:col-span-2">
-          <Label htmlFor={`${idPrefix}-postalCode`}>CEP</Label>
+          <Label htmlFor={`${idPrefix}-postalCode`}>CEP<RequiredMark /></Label>
           <Input
             id={`${idPrefix}-postalCode`}
             inputMode="numeric"
@@ -301,6 +307,7 @@ export function RegistroForm({
             value={form.postalCode}
             onChange={(e) => handleCepChange(e.target.value)}
             aria-invalid={!!errors.postalCode}
+            aria-required="true"
           />
           {cep.status === "loading" && (
             <p className="text-xs text-text-muted">Buscando endereço...</p>
@@ -319,26 +326,28 @@ export function RegistroForm({
         </div>
         <div className="grid grid-cols-[minmax(0,1fr)_6.5rem] gap-4 sm:col-span-2">
           <div className="space-y-1.5">
-            <Label htmlFor={`${idPrefix}-addressLine1`}>Endereço</Label>
+            <Label htmlFor={`${idPrefix}-addressLine1`}>Endereço<RequiredMark /></Label>
             <Input
               id={`${idPrefix}-addressLine1`}
               placeholder="Rua, avenida..."
               value={form.addressLine1}
               onChange={(e) => update("addressLine1", e.target.value)}
               aria-invalid={!!errors.addressLine1}
+              aria-required="true"
             />
             {errors.addressLine1 && (
               <p className="text-xs text-accent">{errors.addressLine1}</p>
             )}
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor={`${idPrefix}-number`}>Número</Label>
+            <Label htmlFor={`${idPrefix}-number`}>Número<RequiredMark /></Label>
             <Input
               id={`${idPrefix}-number`}
               placeholder="123 ou S/N"
               value={form.number}
               onChange={(e) => update("number", e.target.value)}
               aria-invalid={!!errors.number}
+              aria-required="true"
             />
             {errors.number && <p className="text-xs text-accent">{errors.number}</p>}
           </div>
@@ -352,27 +361,29 @@ export function RegistroForm({
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor={`${idPrefix}-neighborhood`}>Bairro</Label>
+          <Label htmlFor={`${idPrefix}-neighborhood`}>Bairro<RequiredMark /></Label>
           <Input
             id={`${idPrefix}-neighborhood`}
             value={form.neighborhood}
             onChange={(e) => update("neighborhood", e.target.value)}
             aria-invalid={!!errors.neighborhood}
+            aria-required="true"
           />
           {errors.neighborhood && <p className="text-xs text-accent">{errors.neighborhood}</p>}
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor={`${idPrefix}-city`}>Cidade</Label>
+          <Label htmlFor={`${idPrefix}-city`}>Cidade<RequiredMark /></Label>
           <Input
             id={`${idPrefix}-city`}
             value={form.city}
             onChange={(e) => update("city", e.target.value)}
             aria-invalid={!!errors.city}
+            aria-required="true"
           />
           {errors.city && <p className="text-xs text-accent">{errors.city}</p>}
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor={`${idPrefix}-region`}>Estado</Label>
+          <Label htmlFor={`${idPrefix}-region`}>Estado<RequiredMark /></Label>
           <Select
             id={`${idPrefix}-region`}
             value={form.region}
@@ -385,6 +396,7 @@ export function RegistroForm({
               </option>
             ))}
           </Select>
+          {errors.region && <p className="text-xs text-accent">{errors.region}</p>}
         </div>
       </div>
 
@@ -397,6 +409,10 @@ export function RegistroForm({
         />
         Quero receber ofertas e novidades da Malatrasi WoodWorks por email.
       </label>
+
+      <p className="mt-4 text-xs text-text-muted">
+        <span className="text-accent">*</span> Campos obrigatórios
+      </p>
 
       <Button
         type="submit"

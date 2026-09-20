@@ -1,36 +1,50 @@
 import { supabase } from "@/lib/supabase";
 import type { Product } from "@/data/products";
 import type { ProductWithCategory } from "@/types/database";
+import { fetchPromoPrices } from "@/lib/api/promotions";
 
 const PRODUCT_SELECT = "*, category:categories(name)";
 
-function toProduct(row: ProductWithCategory): Product {
+function toProduct(
+  row: ProductWithCategory,
+  promoPrices: Map<string, number>,
+): Product {
   return {
     id: row.id,
     slug: row.slug,
     name: row.name,
     category: row.category?.name ?? "Sem categoria",
     price: row.price,
+    promoPrice: promoPrices.get(row.id) ?? null,
     priceTiers: row.price_tiers ?? [],
     images: [row.image_url, row.image_url_2].filter(
       (url): url is string => !!url,
     ),
     description: row.description,
     woodType: row.wood_type,
+    widthCm: row.width_cm ?? null,
+    heightCm: row.height_cm ?? null,
+    weightKg: row.weight_kg ?? null,
     isCustomOrder: row.is_custom_order,
     featured: row.featured,
   };
 }
 
 export async function fetchActiveProducts(): Promise<Product[]> {
-  const { data, error } = await supabase
-    .from("products")
-    .select(PRODUCT_SELECT)
-    .eq("active", true)
-    .eq("visible_in_store", true)
-    .order("created_at", { ascending: false });
+  const [{ data, error }, promoPrices] = await Promise.all([
+    supabase
+      .from("products")
+      .select(PRODUCT_SELECT)
+      .eq("active", true)
+      .eq("visible_in_store", true)
+      .order("created_at", { ascending: false }),
+    // Best-effort: se a promoção não carregar, o catálogo segue sem ela.
+    fetchPromoPrices().catch(() => new Map<string, number>()),
+  ]);
   if (error) throw error;
-  return ((data ?? []) as unknown as ProductWithCategory[]).map(toProduct);
+  return ((data ?? []) as unknown as ProductWithCategory[]).map((row) =>
+    toProduct(row, promoPrices),
+  );
 }
 
 // Usado tanto pela página de produto (/produto/:slug) quanto pelo "adicionar
@@ -39,13 +53,16 @@ export async function fetchActiveProducts(): Promise<Product[]> {
 export async function fetchProductBySlug(
   slug: string,
 ): Promise<Product | null> {
-  const { data, error } = await supabase
-    .from("products")
-    .select(PRODUCT_SELECT)
-    .eq("slug", slug)
-    .eq("active", true)
-    .eq("visible_in_store", true)
-    .maybeSingle();
+  const [{ data, error }, promoPrices] = await Promise.all([
+    supabase
+      .from("products")
+      .select(PRODUCT_SELECT)
+      .eq("slug", slug)
+      .eq("active", true)
+      .eq("visible_in_store", true)
+      .maybeSingle(),
+    fetchPromoPrices().catch(() => new Map<string, number>()),
+  ]);
   if (error) throw error;
-  return data ? toProduct(data as unknown as ProductWithCategory) : null;
+  return data ? toProduct(data as unknown as ProductWithCategory, promoPrices) : null;
 }

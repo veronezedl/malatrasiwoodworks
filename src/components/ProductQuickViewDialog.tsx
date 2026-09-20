@@ -1,4 +1,6 @@
 import { TierBadge } from "@/components/TierPricing";
+import { ProductPrice } from "@/components/ProductPrice";
+import { ProductMeasures } from "@/components/ProductMeasures";
 import { Link } from "react-router-dom";
 import { Hammer, Ruler } from "lucide-react";
 import type { Product } from "@/data/products";
@@ -12,11 +14,6 @@ import { Button } from "@/components/ui/button";
 import { useCart } from "@/hooks/use-cart";
 import { useToast } from "@/hooks/use-toast";
 import { ProductImageCarousel } from "@/components/ProductImageCarousel";
-
-const currency = new Intl.NumberFormat("pt-BR", {
-  style: "currency",
-  currency: "BRL",
-});
 
 interface ProductQuickViewDialogProps {
   product: Product;
@@ -53,10 +50,17 @@ export function ProductQuickViewDialog({
             <h2 className="mt-0.5 font-heading text-lg font-semibold leading-tight text-primary sm:text-xl">
               {product.name}
             </h2>
-            <p className="mt-1 font-heading text-lg font-bold text-primary">
-              {product.isCustomOrder ? "Sob orçamento" : currency.format(product.price)}
-            </p>
-            {!product.isCustomOrder && <TierBadge tiers={product.priceTiers} className="mt-1" />}
+            <ProductPrice
+              product={product}
+              className="mt-1 font-heading text-lg font-bold text-primary"
+            />
+            {!product.isCustomOrder && (
+              <TierBadge
+                tiers={product.priceTiers}
+                basePrice={product.promoPrice ?? product.price}
+                className="mt-1"
+              />
+            )}
             <div className="mt-2 flex flex-wrap gap-1.5 text-xs font-medium text-text-muted">
               <span className="flex items-center gap-1 rounded-full bg-bg-muted px-2 py-0.5">
                 <Hammer className="size-3" /> Feito à mão
@@ -73,6 +77,7 @@ export function ProductQuickViewDialog({
         <p className="line-clamp-3 text-sm leading-relaxed text-text-muted">
           {product.description}
         </p>
+        <ProductMeasures product={product} className="text-xs" />
 
         <div className="flex flex-wrap justify-center gap-2">
           {product.isCustomOrder ? (

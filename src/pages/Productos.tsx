@@ -5,7 +5,8 @@ import { useCategories } from "@/hooks/use-categories";
 import { CategoryFilter } from "@/components/CategoryFilter";
 import { ProductGrid } from "@/components/ProductGrid";
 import { CombosSection } from "@/components/CombosSection";
-import { ALL_CATEGORIES_FILTER, type FilterCategory } from "@/data/products";
+import { PromoSection } from "@/components/PromoSection";
+import { ALL_CATEGORIES_FILTER, PROMO_FILTER, type FilterCategory } from "@/data/products";
 
 export function Productos() {
   useSeo(
@@ -16,8 +17,13 @@ export function Productos() {
   const { products, loading, error } = useProducts();
   const categories = useCategories();
 
-  const filtered = products.filter(
-    (p) => category === ALL_CATEGORIES_FILTER || p.category === category,
+  const promoProducts = products.filter((p) => p.promoPrice != null);
+  const filtered = products.filter((p) =>
+    category === ALL_CATEGORIES_FILTER
+      ? true
+      : category === PROMO_FILTER
+        ? p.promoPrice != null
+        : p.category === category,
   );
 
   return (
@@ -35,6 +41,7 @@ export function Productos() {
       <div className="my-8">
         <CategoryFilter
           categories={categories.map((c) => c.name)}
+          hasPromo={promoProducts.length > 0}
           value={category}
           onChange={setCategory}
         />
@@ -45,7 +52,12 @@ export function Productos() {
       ) : error ? (
         <p className="py-16 text-center text-accent">{error}</p>
       ) : (
-        <ProductGrid products={filtered} />
+        <>
+          {category === ALL_CATEGORIES_FILTER && (
+            <PromoSection products={promoProducts} className="mb-12" />
+          )}
+          <ProductGrid products={filtered} />
+        </>
       )}
     </section>
     <CombosSection />

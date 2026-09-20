@@ -94,8 +94,11 @@ export function unitPriceForQty(
   tiers: PriceTier[] | undefined,
   qty: number,
 ): number {
+  // A faixa nunca sobe o preço: vale o menor entre o preço base (que pode ser
+  // o promocional) e o da faixa atingida.
   const tier = activeTier(tiers, qty);
-  return Math.round((tier ? tier.unit_price : basePrice) * 100) / 100;
+  const price = tier ? Math.min(basePrice, tier.unit_price) : basePrice;
+  return Math.round(price * 100) / 100;
 }
 
 export function lowestTier(tiers: PriceTier[] | undefined): PriceTier | null {

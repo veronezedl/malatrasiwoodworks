@@ -13,6 +13,8 @@ export interface CartItem {
   // Preço base do produto (as faixas progressivas se aplicam sobre ele) ou o
   // preço fechado do kit.
   price: number;
+  // Preço da promoção ativa (substitui o preço base enquanto durar).
+  promoPrice?: number | null;
   priceTiers?: PriceTier[];
   components?: { name: string; quantity: number }[];
   // Adicionais escolhidos para esta linha; o valor de cada um é multiplicado
@@ -30,7 +32,7 @@ export function cartItemAddonUnit(item: CartItem): number {
 // Preço unitário efetivo da linha (já com a faixa progressiva atingida).
 export function cartItemUnitPrice(item: CartItem): number {
   if (item.kind === "combo") return item.price;
-  return unitPriceForQty(item.price, item.priceTiers, item.quantity);
+  return unitPriceForQty(item.promoPrice ?? item.price, item.priceTiers, item.quantity);
 }
 
 interface CartContextValue {
@@ -77,7 +79,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       if (existing) {
         return prev.map((i) =>
           i.slug === product.slug
-            ? { ...i, quantity: i.quantity + quantity }
+            ? { ...i, quantity: i.quantity + quantity, promoPrice: product.promoPrice }
             : i,
         );
       }
@@ -88,6 +90,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           slug: product.slug,
           name: product.name,
           price: product.price,
+          promoPrice: product.promoPrice,
           priceTiers: product.priceTiers,
           image: product.images[0] ?? "",
           quantity,
@@ -153,10 +156,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           if (
             product &&
             (product.price !== item.price ||
+              product.promoPrice !== (item.promoPrice ?? null) ||
               JSON.stringify(product.priceTiers) !== JSON.stringify(item.priceTiers ?? []))
           ) {
             changed = true;
-            return { ...item, price: product.price, priceTiers: product.priceTiers };
+            return {
+              ...item,
+              price: product.price,
+              promoPrice: product.promoPrice,
+              priceTiers: product.priceTiers,
+            };
           }
           return item;
         });

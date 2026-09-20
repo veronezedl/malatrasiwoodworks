@@ -9,6 +9,7 @@ import { CategoryFilter } from "@/components/CategoryFilter";
 import { ProductGrid } from "@/components/ProductGrid";
 import { ReviewsSection } from "@/components/ReviewsSection";
 import { CombosSection } from "@/components/CombosSection";
+import { PromoSection } from "@/components/PromoSection";
 import { CustomerGallerySection } from "@/components/CustomerGallerySection";
 import { AboutSection } from "@/components/AboutSection";
 import { ContactSection } from "@/components/ContactSection";
@@ -73,6 +74,12 @@ export function Home() {
         </Reveal>
       </section>
 
+      <Reveal>
+        <PromoSection
+          products={products.filter((p) => p.promoPrice != null)}
+          className="mx-auto max-w-7xl px-4 pb-16 sm:px-6"
+        />
+      </Reveal>
       <Reveal>
         <CombosSection />
       </Reveal>

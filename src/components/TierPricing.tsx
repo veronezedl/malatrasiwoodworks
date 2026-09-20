@@ -10,12 +10,15 @@ const currency = new Intl.NumberFormat("pt-BR", {
 // Chip de destaque do preço progressivo (cartão do catálogo e popup rápido).
 export function TierBadge({
   tiers,
+  basePrice,
   className = "",
 }: {
   tiers: PriceTier[];
+  // Preço vigente (promocional, se houver): faixas que não baixam o preço não aparecem.
+  basePrice: number;
   className?: string;
 }) {
-  const low = lowestTier(tiers);
+  const low = lowestTier(tiers.filter((t) => t.unit_price < basePrice));
   if (!low) return null;
   return (
     <span
@@ -38,9 +41,10 @@ export function TierTable({
   tiers: PriceTier[];
   quantity: number;
 }) {
-  if (tiers.length === 0) return null;
-  const sorted = [...tiers].sort((a, b) => a.min_qty - b.min_qty);
-  const current = activeTier(tiers, quantity);
+  const useful = tiers.filter((t) => t.unit_price < basePrice);
+  if (useful.length === 0) return null;
+  const sorted = [...useful].sort((a, b) => a.min_qty - b.min_qty);
+  const current = activeTier(useful, quantity);
   const firstMin = sorted[0].min_qty;
 
   const rows = [

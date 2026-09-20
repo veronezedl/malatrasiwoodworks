@@ -1,16 +1,27 @@
 import { cn } from "@/lib/utils";
-import { ALL_CATEGORIES_FILTER, type FilterCategory } from "@/data/products";
+import { ALL_CATEGORIES_FILTER, PROMO_FILTER, type FilterCategory } from "@/data/products";
 
 interface CategoryFilterProps {
   // Nomes das categorias ativas (vindas do admin) — "Todos" é adicionado
   // automaticamente antes delas.
   categories: string[];
+  // Mostra o filtro "Promoção" (só quando há produtos em promoção).
+  hasPromo?: boolean;
   value: FilterCategory;
   onChange: (category: FilterCategory) => void;
 }
 
-export function CategoryFilter({ categories, value, onChange }: CategoryFilterProps) {
-  const options = [ALL_CATEGORIES_FILTER, ...categories];
+export function CategoryFilter({
+  categories,
+  hasPromo = false,
+  value,
+  onChange,
+}: CategoryFilterProps) {
+  const options = [
+    ALL_CATEGORIES_FILTER,
+    ...(hasPromo ? [PROMO_FILTER] : []),
+    ...categories,
+  ];
   return (
     <div className="flex flex-wrap gap-2">
       {options.map((category) => (

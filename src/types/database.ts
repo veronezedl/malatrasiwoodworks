@@ -92,6 +92,9 @@ export interface DbProduct {
   image_url: string;
   image_url_2: string | null;
   price_tiers: PriceTier[];
+  width_cm: number | null;
+  height_cm: number | null;
+  weight_kg: number | null;
   description: string;
   wood_type: string | null;
   is_custom_order: boolean;

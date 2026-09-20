@@ -32,6 +32,9 @@ export function ProductForm({ productId, onSaved }: ProductFormProps) {
   const [imageUrl2, setImageUrl2] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [woodType, setWoodType] = React.useState("");
+  const [widthCm, setWidthCm] = React.useState("");
+  const [heightCm, setHeightCm] = React.useState("");
+  const [weightKg, setWeightKg] = React.useState("");
   const [isCustomOrder, setIsCustomOrder] = React.useState(false);
   const [active, setActive] = React.useState(true);
   const [featured, setFeatured] = React.useState(false);
@@ -76,6 +79,9 @@ export function ProductForm({ productId, onSaved }: ProductFormProps) {
           );
           setDescription(product.description);
           setWoodType(product.wood_type ?? "");
+          setWidthCm(product.width_cm != null ? String(product.width_cm) : "");
+          setHeightCm(product.height_cm != null ? String(product.height_cm) : "");
+          setWeightKg(product.weight_kg != null ? String(product.weight_kg) : "");
           setIsCustomOrder(product.is_custom_order);
           setActive(product.active);
           setFeatured(product.featured);
@@ -118,6 +124,17 @@ export function ProductForm({ productId, onSaved }: ProductFormProps) {
       showToast("Confira as faixas de preço", priceTiers);
       return;
     }
+    const measures = [
+      { label: "largura", value: widthCm },
+      { label: "altura", value: heightCm },
+      { label: "peso", value: weightKg },
+    ];
+    for (const m of measures) {
+      if (m.value.trim() && !(Number(m.value) > 0)) {
+        showToast("Confira as medidas", `O campo ${m.label} deve ser um número maior que zero.`);
+        return;
+      }
+    }
     setSaving(true);
     try {
       const input = {
@@ -130,6 +147,9 @@ export function ProductForm({ productId, onSaved }: ProductFormProps) {
         price_tiers: priceTiers,
         description,
         wood_type: woodType || null,
+        width_cm: widthCm.trim() ? Number(widthCm) : null,
+        height_cm: heightCm.trim() ? Number(heightCm) : null,
+        weight_kg: weightKg.trim() ? Number(weightKg) : null,
         is_custom_order: isCustomOrder,
         active,
         featured,
@@ -396,6 +416,44 @@ export function ProductForm({ productId, onSaved }: ProductFormProps) {
           onChange={(e) => setImageUrl2(e.target.value)}
           placeholder="https://... (opcional, ou envie um arquivo acima)"
         />
+      </div>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <div className="space-y-1.5">
+          <Label htmlFor="p-width">Largura (cm)</Label>
+          <Input
+            id="p-width"
+            type="number"
+            step="0.1"
+            min="0"
+            value={widthCm}
+            onChange={(e) => setWidthCm(e.target.value)}
+            placeholder="ex: 30"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="p-height">Altura (cm)</Label>
+          <Input
+            id="p-height"
+            type="number"
+            step="0.1"
+            min="0"
+            value={heightCm}
+            onChange={(e) => setHeightCm(e.target.value)}
+            placeholder="ex: 15"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="p-weight">Peso (kg)</Label>
+          <Input
+            id="p-weight"
+            type="number"
+            step="0.001"
+            min="0"
+            value={weightKg}
+            onChange={(e) => setWeightKg(e.target.value)}
+            placeholder="ex: 0,8"
+          />
+        </div>
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="p-wood-type">Tipo de madeira (opcional)</Label>

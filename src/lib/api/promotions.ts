@@ -79,3 +79,44 @@ export async function getActivePromotion(): Promise<DbPromotion | null> {
   if (error) throw error;
   return data;
 }
+
+export interface PromotionProductInput {
+  product_id: string;
+  promo_price: number;
+}
+
+export async function listPromotionProducts(
+  promotionId: string,
+): Promise<PromotionProductInput[]> {
+  const { data, error } = await supabase
+    .from("promotion_products")
+    .select("product_id, promo_price")
+    .eq("promotion_id", promotionId);
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function setPromotionProducts(
+  promotionId: string,
+  items: PromotionProductInput[],
+): Promise<void> {
+  const { error: deleteError } = await supabase
+    .from("promotion_products")
+    .delete()
+    .eq("promotion_id", promotionId);
+  if (deleteError) throw deleteError;
+  if (items.length === 0) return;
+  const { error } = await supabase
+    .from("promotion_products")
+    .insert(items.map((item) => ({ promotion_id: promotionId, ...item })));
+  if (error) throw error;
+}
+
+// Preço promocional por produto da promoção ativa (e ainda não encerrada).
+// Vazio quando não há promoção ativa. Leitura pública, usada pelo catálogo.
+export async function fetchPromoPrices(): Promise<Map<string, number>> {
+  const promo = await getActivePromotion();
+  if (!promo) return new Map();
+  const items = await listPromotionProducts(promo.id);
+  return new Map(items.map((i) => [i.product_id, Number(i.promo_price)]));
+}

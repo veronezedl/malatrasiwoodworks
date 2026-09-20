@@ -488,8 +488,15 @@ export function Carrito() {
             const isCombo = item.kind === "combo";
             const unit = cartItemUnitPrice(item);
             const addonUnit = cartItemAddonUnit(item);
-            const tier = isCombo ? null : activeTier(item.priceTiers, item.quantity);
-            const upcoming = isCombo ? null : nextTier(item.priceTiers, item.quantity);
+            const onPromo = !isCombo && item.promoPrice != null;
+            const referencePrice = onPromo ? item.promoPrice! : item.price;
+            const activeTierRow = isCombo ? null : activeTier(item.priceTiers, item.quantity);
+            // A faixa só conta quando realmente baixa o preço (o da promoção pode já ser menor).
+            const tier =
+              activeTierRow && activeTierRow.unit_price < referencePrice ? activeTierRow : null;
+            const nextRow = isCombo ? null : nextTier(item.priceTiers, item.quantity);
+            const upcoming = nextRow && nextRow.unit_price < unit ? nextRow : null;
+            const discounted = unit < item.price;
             return (
             <div key={item.slug} className="flex flex-wrap items-center gap-4 py-5">
               <img
@@ -516,14 +523,19 @@ export function Carrito() {
                   </p>
                 )}
                 <p className="mt-1 text-sm text-text-muted">
-                  {tier && (
+                  {discounted && (
                     <span className="mr-1.5 line-through">{currency.format(item.price)}</span>
                   )}
-                  <span className={tier ? "font-semibold text-accent" : ""}>
+                  <span className={discounted ? "font-semibold text-accent" : ""}>
                     {currency.format(unit)}
                   </span>
                   {isCombo ? " o kit" : " cada"}
                 </p>
+                {onPromo && (
+                  <span className="mr-1.5 mt-1 inline-block rounded-full bg-accent px-2 py-0.5 text-[11px] font-semibold text-white">
+                    Promoção
+                  </span>
+                )}
                 {tier && (
                   <span className="mt-1 inline-block rounded-full bg-accent/10 px-2 py-0.5 text-[11px] font-semibold text-accent">
                     Preço progressivo · a partir de {tier.min_qty} un.

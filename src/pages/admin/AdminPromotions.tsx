@@ -1,19 +1,24 @@
 import * as React from "react";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 import {
   createPromotion,
   deletePromotion,
+  listPromotionProducts,
   listPromotions,
   setActivePromotion,
+  setPromotionProducts,
   updatePromotion,
   type DbPromotion,
 } from "@/lib/api/promotions";
+import { listProducts } from "@/lib/api/products";
+import type { ProductWithCategory } from "@/types/database";
 import { useSeo } from "@/hooks/use-seo";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Select } from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -26,10 +31,16 @@ const dateTimeFmt = new Intl.DateTimeFormat("pt-BR", {
   timeStyle: "short",
 });
 
+const currency = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+});
+
 const emptyForm = {
   message: "Promoção termina em",
   endsAt: "",
   active: false,
+  items: [] as { product_id: string; promo_price: string }[],
 };
 
 type PromoFormState = typeof emptyForm;
@@ -51,16 +62,41 @@ function promoToForm(promo: DbPromotion): PromoFormState {
     message: promo.message,
     endsAt: toDatetimeLocal(promo.ends_at),
     active: promo.active,
+    items: [],
   };
+}
+
+// Valida os produtos da promoção; devolve o texto do erro ou a lista pronta.
+function parseItems(
+  form: PromoFormState,
+  products: ProductWithCategory[],
+): { product_id: string; promo_price: number }[] | string {
+  const rows = form.items.filter((i) => i.product_id || i.promo_price.trim());
+  const seen = new Set<string>();
+  const parsed: { product_id: string; promo_price: number }[] = [];
+  for (const row of rows) {
+    const product = products.find((p) => p.id === row.product_id);
+    const promo_price = Number(row.promo_price);
+    if (!product) return "Escolha o produto em todas as linhas da promoção.";
+    if (seen.has(product.id)) return `"${product.name}" aparece mais de uma vez.`;
+    seen.add(product.id);
+    if (!(promo_price > 0) || promo_price >= product.price) {
+      return `O preço promocional de "${product.name}" deve ser maior que zero e menor que ${currency.format(product.price)}.`;
+    }
+    parsed.push({ product_id: product.id, promo_price: Math.round(promo_price * 100) / 100 });
+  }
+  return parsed;
 }
 
 function PromoFormFields({
   idPrefix,
   form,
+  products,
   onChange,
 }: {
   idPrefix: string;
   form: PromoFormState;
+  products: ProductWithCategory[];
   onChange: (form: PromoFormState) => void;
 }) {
   return (
@@ -96,34 +132,141 @@ function PromoFormFields({
         />
         Ativa (visível na loja)
       </label>
+
+      <div className="mt-5 space-y-2 rounded-brand border border-black/10 p-3">
+        <div>
+          <p className="text-sm font-medium text-text">Produtos da promoção</p>
+          <p className="text-xs text-text-muted">
+            Cada produto escolhido passa a custar o preço promocional enquanto a
+            promoção estiver ativa. Produtos fora da lista continuam com o preço normal.
+          </p>
+        </div>
+        {form.items.map((item, index) => {
+          const product = products.find((p) => p.id === item.product_id);
+          return (
+            <div key={index} className="flex items-end gap-2">
+              <div className="min-w-0 flex-1 space-y-1">
+                <Label htmlFor={`${idPrefix}-item-${index}`} className="text-xs">
+                  Produto
+                </Label>
+                <Select
+                  id={`${idPrefix}-item-${index}`}
+                  value={item.product_id}
+                  onChange={(e) =>
+                    onChange({
+                      ...form,
+                      items: form.items.map((it, i) =>
+                        i === index ? { ...it, product_id: e.target.value } : it,
+                      ),
+                    })
+                  }
+                >
+                  <option value="">Selecione...</option>
+                  {products.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} — {currency.format(p.price)}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div className="w-28 space-y-1">
+                <Label htmlFor={`${idPrefix}-price-${index}`} className="text-xs">
+                  Preço promo (R$)
+                </Label>
+                <Input
+                  id={`${idPrefix}-price-${index}`}
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={item.promo_price}
+                  placeholder={product ? String(product.price) : ""}
+                  onChange={(e) =>
+                    onChange({
+                      ...form,
+                      items: form.items.map((it, i) =>
+                        i === index ? { ...it, promo_price: e.target.value } : it,
+                      ),
+                    })
+                  }
+                />
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label="Remover produto da promoção"
+                onClick={() =>
+                  onChange({ ...form, items: form.items.filter((_, i) => i !== index) })
+                }
+              >
+                <Trash2 className="size-4" />
+              </Button>
+            </div>
+          );
+        })}
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() =>
+            onChange({ ...form, items: [...form.items, { product_id: "", promo_price: "" }] })
+          }
+        >
+          <Plus /> Adicionar produto
+        </Button>
+      </div>
     </>
   );
 }
 
 interface EditPromotionDialogProps {
   promotion: DbPromotion | null;
+  products: ProductWithCategory[];
   onClose: () => void;
   onSaved: () => void;
 }
 
-function EditPromotionDialog({ promotion, onClose, onSaved }: EditPromotionDialogProps) {
+function EditPromotionDialog({
+  promotion,
+  products,
+  onClose,
+  onSaved,
+}: EditPromotionDialogProps) {
   const { showToast } = useToast();
   const [form, setForm] = React.useState<PromoFormState>(emptyForm);
   const [saving, setSaving] = React.useState(false);
 
   React.useEffect(() => {
-    if (promotion) setForm(promoToForm(promotion));
+    if (!promotion) return;
+    setForm(promoToForm(promotion));
+    listPromotionProducts(promotion.id)
+      .then((items) =>
+        setForm((f) => ({
+          ...f,
+          items: items.map((i) => ({
+            product_id: i.product_id,
+            promo_price: String(i.promo_price),
+          })),
+        })),
+      )
+      .catch(() => {});
   }, [promotion]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!promotion) return;
+    const items = parseItems(form, products);
+    if (typeof items === "string") {
+      showToast("Confira os produtos da promoção", items);
+      return;
+    }
     setSaving(true);
     try {
       await updatePromotion(promotion.id, {
         message: form.message,
         ends_at: fromDatetimeLocal(form.endsAt),
       });
+      await setPromotionProducts(promotion.id, items);
       if (form.active !== promotion.active) {
         await setActivePromotion(promotion.id, form.active);
       }
@@ -138,12 +281,17 @@ function EditPromotionDialog({ promotion, onClose, onSaved }: EditPromotionDialo
 
   return (
     <Dialog open={!!promotion} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Editar promoção</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
-          <PromoFormFields idPrefix="edit-promo" form={form} onChange={setForm} />
+          <PromoFormFields
+            idPrefix="edit-promo"
+            form={form}
+            products={products}
+            onChange={setForm}
+          />
           <Button type="submit" className="mt-5 w-full" disabled={saving}>
             {saving ? "Salvando..." : "Salvar alterações"}
           </Button>
@@ -161,6 +309,13 @@ export function AdminPromotions() {
   const [form, setForm] = React.useState<PromoFormState>(emptyForm);
   const [saving, setSaving] = React.useState(false);
   const [editingPromo, setEditingPromo] = React.useState<DbPromotion | null>(null);
+  const [products, setProducts] = React.useState<ProductWithCategory[]>([]);
+
+  React.useEffect(() => {
+    listProducts()
+      .then(setProducts)
+      .catch(() => {});
+  }, []);
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -174,6 +329,11 @@ export function AdminPromotions() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const items = parseItems(form, products);
+    if (typeof items === "string") {
+      showToast("Confira os produtos da promoção", items);
+      return;
+    }
     setSaving(true);
     try {
       // Siempre se crea inactiva primero — activarla es una llamada aparte
@@ -183,6 +343,7 @@ export function AdminPromotions() {
         ends_at: fromDatetimeLocal(form.endsAt),
         active: false,
       });
+      await setPromotionProducts(created.id, items);
       if (form.active) {
         await setActivePromotion(created.id, true);
       }
@@ -220,8 +381,9 @@ export function AdminPromotions() {
     <div>
       <h1 className="font-heading text-2xl font-bold text-primary">Promoção</h1>
       <p className="mt-1 text-sm text-text-muted">
-        Faixa com contagem regressiva mostrada em toda a loja. Só pode haver
-        uma promoção ativa por vez.
+        Faixa com contagem regressiva no topo da loja, mais os produtos em promoção
+        (com preço promocional), exibidos numa seção do catálogo e no filtro
+        "Promoção". Só pode haver uma promoção ativa por vez.
       </p>
 
       <form
@@ -233,7 +395,7 @@ export function AdminPromotions() {
         </h2>
 
         <div className="mt-4">
-          <PromoFormFields idPrefix="promo" form={form} onChange={setForm} />
+          <PromoFormFields idPrefix="promo" form={form} products={products} onChange={setForm} />
         </div>
 
         <Button type="submit" className="mt-5 w-full" disabled={saving}>
@@ -342,6 +504,7 @@ export function AdminPromotions() {
 
       <EditPromotionDialog
         promotion={editingPromo}
+        products={products}
         onClose={() => setEditingPromo(null)}
         onSaved={() => {
           setEditingPromo(null);

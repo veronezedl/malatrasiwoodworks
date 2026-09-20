@@ -50,7 +50,9 @@ export function unitPriceForQty(
   for (const tier of tiers ?? []) {
     if (qty >= tier.min_qty && (!best || tier.min_qty > best.min_qty)) best = tier;
   }
-  return round2(best ? best.unit_price : basePrice);
+  // A faixa nunca sobe o preço: vale o menor entre o base (que pode ser o
+  // promocional) e o da faixa atingida.
+  return round2(best ? Math.min(basePrice, best.unit_price) : basePrice);
 }
 
 export async function priceOrder(
@@ -93,16 +95,37 @@ export async function priceOrder(
       .in("id", ids);
     if (error) throw error;
     const map = new Map((products ?? []).map((p) => [p.id, p]));
+
+    // Preço promocional da promoção ativa (e ainda não encerrada), por produto.
+    const promoPrices = new Map<string, number>();
+    const { data: promo, error: promoError } = await supabase
+      .from("promotions")
+      .select("id")
+      .eq("active", true)
+      .gt("ends_at", new Date().toISOString())
+      .maybeSingle();
+    if (promoError) throw promoError;
+    if (promo) {
+      const { data: promoItems, error: promoItemsError } = await supabase
+        .from("promotion_products")
+        .select("product_id, promo_price")
+        .eq("promotion_id", promo.id)
+        .in("product_id", ids);
+      if (promoItemsError) throw promoItemsError;
+      for (const row of promoItems ?? []) promoPrices.set(row.product_id, Number(row.promo_price));
+    }
+
     for (const item of productItems) {
       const product = map.get(item.product_id!);
       if (!product || !product.active) {
         throw new PricingError("Algum produto do seu carrinho não está mais disponível.");
       }
+      const basePrice = promoPrices.get(product.id) ?? product.price;
       lines.push({
         product_id: product.id,
         combo_id: null,
         product_name: product.name,
-        unit_price: unitPriceForQty(product.price, product.price_tiers, item.quantity),
+        unit_price: unitPriceForQty(basePrice, product.price_tiers, item.quantity),
         quantity: item.quantity,
       });
       lineAddons.push({

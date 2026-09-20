@@ -22,6 +22,7 @@ export function CuentaPerfil() {
     cpfCnpj: customer.cpf_cnpj ?? "",
     addressLine1: customer.address_line1 ?? "",
     addressLine2: customer.address_line2 ?? "",
+    addressNumber: customer.address_number ?? "",
     neighborhood: customer.neighborhood ?? "",
     postalCode: customer.postal_code ?? "",
     city: customer.city ?? "",
@@ -66,6 +67,7 @@ export function CuentaPerfil() {
         cpf_cnpj: form.cpfCnpj || null,
         address_line1: form.addressLine1,
         address_line2: form.addressLine2 || null,
+        address_number: form.addressNumber || null,
         neighborhood: form.neighborhood || null,
         postal_code: form.postalCode,
         city: form.city,
@@ -181,6 +183,14 @@ export function CuentaPerfil() {
               value={form.addressLine1}
               onChange={(e) => update("addressLine1", e.target.value)}
               required
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="addressNumber">Número</Label>
+            <Input
+              id="addressNumber"
+              value={form.addressNumber}
+              onChange={(e) => update("addressNumber", e.target.value)}
             />
           </div>
           <div className="space-y-1.5 sm:col-span-2">

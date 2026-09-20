@@ -193,6 +193,7 @@ export async function convertQuoteToOrder(
       shipping_phone: customer.phone,
       shipping_address_line1: customer.address_line1,
       shipping_address_line2: customer.address_line2,
+      shipping_address_number: customer.address_number,
       shipping_neighborhood: customer.neighborhood,
       shipping_postal_code: customer.postal_code,
       shipping_city: customer.city,

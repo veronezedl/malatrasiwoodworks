@@ -125,6 +125,7 @@ export function AdminOrderQuickView({ orderId }: { orderId: string }) {
               </h3>
               <p className="mt-1 text-sm text-text">
                 {order.shipping_address_line1}
+                {order.shipping_address_number ? `, ${order.shipping_address_number}` : ""}
                 {order.shipping_address_line2
                   ? `, ${order.shipping_address_line2}`
                   : ""}

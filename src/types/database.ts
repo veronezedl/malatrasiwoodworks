@@ -65,6 +65,7 @@ export interface DbCustomer {
   cpf_cnpj: string | null;
   address_line1: string | null;
   address_line2: string | null;
+  address_number: string | null;
   neighborhood: string | null;
   postal_code: string | null;
   city: string | null;
@@ -123,6 +124,7 @@ export interface DbOrder {
   shipping_phone: string;
   shipping_address_line1: string;
   shipping_address_line2: string | null;
+  shipping_address_number: string | null;
   shipping_neighborhood: string | null;
   shipping_postal_code: string;
   shipping_city: string;

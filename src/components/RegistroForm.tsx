@@ -2,7 +2,7 @@ import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { BR_STATES } from "@/data/states";
-import { formatCep, joinStreetNumber } from "@/lib/cep";
+import { formatCep } from "@/lib/cep";
 import { useCepLookup } from "@/hooks/use-cep-lookup";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -171,7 +171,8 @@ export function RegistroForm({
         email,
         phone: form.phone,
         cpf_cnpj: form.cpfCnpj || null,
-        address_line1: joinStreetNumber(form.addressLine1, form.number),
+        address_line1: form.addressLine1,
+        address_number: form.number,
         address_line2: form.addressLine2 || null,
         neighborhood: form.neighborhood,
         postal_code: form.postalCode,

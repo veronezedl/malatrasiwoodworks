@@ -323,7 +323,7 @@ Deno.serve(async (req) => {
                               </div>
                               <div style="margin-top:6px;font-size:13px;line-height:1.6;color:#1f1710;">
                                 ${order.shipping_full_name}<br />
-                                ${order.shipping_address_line1}${order.shipping_address_line2 ? `, ${order.shipping_address_line2}` : ""}<br />
+                                ${order.shipping_address_line1}${order.shipping_address_number ? `, ${order.shipping_address_number}` : ""}${order.shipping_address_line2 ? `, ${order.shipping_address_line2}` : ""}<br />
                                 ${order.shipping_neighborhood ? `${order.shipping_neighborhood} · ` : ""}${order.shipping_postal_code} ${order.shipping_city}${order.shipping_region ? `, ${order.shipping_region}` : ""}<br />
                                 ${order.shipping_country_code}
                               </div>

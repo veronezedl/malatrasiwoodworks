@@ -24,6 +24,7 @@ const ALLOWED_FIELDS = [
   "cpf_cnpj",
   "address_line1",
   "address_line2",
+  "address_number",
   "neighborhood",
   "postal_code",
   "city",

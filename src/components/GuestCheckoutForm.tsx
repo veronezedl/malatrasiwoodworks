@@ -1,6 +1,6 @@
 import * as React from "react";
 import { BR_STATES } from "@/data/states";
-import { formatCep, joinStreetNumber } from "@/lib/cep";
+import { formatCep } from "@/lib/cep";
 import { useCepLookup } from "@/hooks/use-cep-lookup";
 import { saveGuestDraft, type GuestCustomerInput } from "@/lib/api/guestCheckout";
 import { Button } from "@/components/ui/button";
@@ -40,12 +40,13 @@ const initialState: FormState = {
 
 // Mapeia cada campo do formulário para a coluna real de customers, usado
 // pelo autosave (ver saveGuestDraft em lib/api/guestCheckout.ts).
-const FIELD_KEY_MAP: Record<Exclude<keyof FormState, "number">, keyof GuestCustomerInput> = {
+const FIELD_KEY_MAP: Record<keyof FormState, keyof GuestCustomerInput> = {
   fullName: "full_name",
   email: "email",
   phone: "phone",
   cpfCnpj: "cpf_cnpj",
   addressLine1: "address_line1",
+  number: "address_number",
   addressLine2: "address_line2",
   neighborhood: "neighborhood",
   postalCode: "postal_code",
@@ -96,17 +97,12 @@ export function GuestCheckoutForm({
 
   // Para selects/checkboxes (sempre têm um valor, nunca vazios) o autosave
   // dispara na hora; os campos de texto salvam no onBlur.
-  function updateAndSave<K extends Exclude<keyof FormState, "number">>(key: K, value: FormState[K]) {
+  function updateAndSave<K extends keyof FormState>(key: K, value: FormState[K]) {
     update(key, value);
     autosave({ [FIELD_KEY_MAP[key]]: value } as Partial<GuestCustomerInput>);
   }
 
-  function saveAddressLine() {
-    const line = joinStreetNumber(form.addressLine1, form.number);
-    if (line) autosave({ address_line1: line });
-  }
-
-  function handleBlur(key: Exclude<keyof FormState, "number" | "addressLine1">) {
+  function handleBlur(key: keyof FormState) {
     const value = form[key];
     if (typeof value === "string" && !value.trim()) return;
     autosave({ [FIELD_KEY_MAP[key]]: value } as Partial<GuestCustomerInput>);
@@ -127,9 +123,7 @@ export function GuestCheckoutForm({
       city: undefined,
     }));
     autosave({
-      ...(address.street
-        ? { address_line1: joinStreetNumber(address.street, form.number) }
-        : {}),
+      ...(address.street ? { address_line1: address.street } : {}),
       ...(address.neighborhood ? { neighborhood: address.neighborhood } : {}),
       ...(address.city ? { city: address.city } : {}),
       ...(address.uf ? { region: address.uf } : {}),
@@ -170,7 +164,8 @@ export function GuestCheckoutForm({
           email: form.email,
           phone: form.phone,
           cpf_cnpj: form.cpfCnpj || undefined,
-          address_line1: joinStreetNumber(form.addressLine1, form.number),
+          address_line1: form.addressLine1,
+          address_number: form.number,
           address_line2: form.addressLine2 || undefined,
           neighborhood: form.neighborhood,
           postal_code: form.postalCode,
@@ -285,7 +280,7 @@ export function GuestCheckoutForm({
               placeholder="Rua, avenida..."
               value={form.addressLine1}
               onChange={(e) => update("addressLine1", e.target.value)}
-              onBlur={saveAddressLine}
+              onBlur={() => handleBlur("addressLine1")}
               aria-invalid={!!errors.addressLine1}
             />
             {errors.addressLine1 && (
@@ -299,7 +294,7 @@ export function GuestCheckoutForm({
               placeholder="123 ou S/N"
               value={form.number}
               onChange={(e) => update("number", e.target.value)}
-              onBlur={saveAddressLine}
+              onBlur={() => handleBlur("number")}
               aria-invalid={!!errors.number}
             />
             {errors.number && <p className="text-xs text-accent">{errors.number}</p>}

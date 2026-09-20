@@ -167,6 +167,7 @@ export function CuentaPedidoDetail() {
               {order.shipping_full_name}
               <br />
               {order.shipping_address_line1}
+              {order.shipping_address_number ? `, ${order.shipping_address_number}` : ""}
               {order.shipping_address_line2
                 ? `, ${order.shipping_address_line2}`
                 : ""}

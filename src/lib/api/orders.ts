@@ -67,6 +67,7 @@ export async function createOrder(
       shipping_phone: customer.phone,
       shipping_address_line1: customer.address_line1,
       shipping_address_line2: customer.address_line2,
+      shipping_neighborhood: customer.neighborhood,
       shipping_postal_code: customer.postal_code,
       shipping_city: customer.city,
       shipping_region: customer.region,
@@ -156,6 +157,23 @@ export async function updatePaymentStatus(
     .update({ payment_status: paymentStatus })
     .eq("id", orderId);
   if (error) throw error;
+}
+
+// Cria a "preference" de pagamento no Mercado Pago (Checkout Pro) para um
+// pedido já existente e devolve a URL pra onde redirecionar o cliente.
+export async function createMercadoPagoPreference(
+  orderId: string,
+): Promise<{ initPoint: string }> {
+  const { data, error } = await supabase.functions.invoke(
+    "create-mercadopago-preference",
+    { body: { orderId } },
+  );
+  if (error || data?.error) {
+    throw new Error(
+      data?.error || "Não foi possível iniciar o pagamento online.",
+    );
+  }
+  return { initPoint: data.initPoint as string };
 }
 
 export async function updateAdminNotes(

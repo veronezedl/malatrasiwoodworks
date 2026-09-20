@@ -19,7 +19,7 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const VALID_PAYMENT_METHODS = ["pix", "transferencia", "dinheiro", "a_combinar"];
+const VALID_PAYMENT_METHODS = ["pix", "dinheiro", "a_combinar", "mercadopago"];
 
 interface CustomerInput {
   full_name: string;
@@ -28,6 +28,7 @@ interface CustomerInput {
   cpf_cnpj?: string | null;
   address_line1: string;
   address_line2?: string | null;
+  neighborhood?: string | null;
   postal_code: string;
   city: string;
   region?: string | null;
@@ -48,6 +49,7 @@ function validateCustomer(customer: CustomerInput | undefined): string | null {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customer.email ?? "")) return "Email inválido.";
   if (!customer.phone?.trim()) return "Informe um telefone de contato.";
   if (!customer.address_line1?.trim()) return "Informe seu endereço.";
+  if (!customer.neighborhood?.trim()) return "Informe o bairro.";
   if (!customer.postal_code?.trim()) return "Informe o CEP.";
   if (!customer.city?.trim()) return "Informe sua cidade.";
   if (!customer.country_code?.trim()) return "Informe seu país.";
@@ -126,6 +128,7 @@ Deno.serve(async (req) => {
       cpf_cnpj: customerInput!.cpf_cnpj || null,
       address_line1: customerInput!.address_line1,
       address_line2: customerInput!.address_line2 || null,
+      neighborhood: customerInput!.neighborhood || null,
       postal_code: customerInput!.postal_code,
       city: customerInput!.city,
       region: customerInput!.region || null,
@@ -170,6 +173,7 @@ Deno.serve(async (req) => {
         shipping_phone: customerFields.phone,
         shipping_address_line1: customerFields.address_line1,
         shipping_address_line2: customerFields.address_line2,
+        shipping_neighborhood: customerFields.neighborhood,
         shipping_postal_code: customerFields.postal_code,
         shipping_city: customerFields.city,
         shipping_region: customerFields.region,

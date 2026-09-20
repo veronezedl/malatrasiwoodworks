@@ -2,7 +2,7 @@ import * as React from "react";
 import { Link } from "react-router-dom";
 import { Plus, Pencil, Trash2, Eye, Upload } from "lucide-react";
 import { deleteProduct, listProducts, updateProduct } from "@/lib/api/products";
-import type { DbProduct } from "@/types/database";
+import type { ProductWithCategory } from "@/types/database";
 import { useSeo } from "@/hooks/use-seo";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,7 @@ const currency = new Intl.NumberFormat("pt-BR", {
 export function AdminProducts() {
   useSeo("Produtos · Admin Malatrasi WoodWorks", "Gestão do catálogo.");
   const { showToast } = useToast();
-  const [products, setProducts] = React.useState<DbProduct[]>([]);
+  const [products, setProducts] = React.useState<ProductWithCategory[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [editingProductId, setEditingProductId] = React.useState<string | null>(null);
   const [bulkImportOpen, setBulkImportOpen] = React.useState(false);
@@ -34,7 +34,7 @@ export function AdminProducts() {
     load();
   }, [load]);
 
-  async function toggleActive(product: DbProduct) {
+  async function toggleActive(product: ProductWithCategory) {
     await updateProduct(product.id, { active: !product.active });
     setProducts((prev) =>
       prev.map((p) =>
@@ -43,7 +43,7 @@ export function AdminProducts() {
     );
   }
 
-  async function toggleFeatured(product: DbProduct) {
+  async function toggleFeatured(product: ProductWithCategory) {
     await updateProduct(product.id, { featured: !product.featured });
     setProducts((prev) =>
       prev.map((p) =>
@@ -52,7 +52,7 @@ export function AdminProducts() {
     );
   }
 
-  async function toggleVisibleInStore(product: DbProduct) {
+  async function toggleVisibleInStore(product: ProductWithCategory) {
     await updateProduct(product.id, { visible_in_store: !product.visible_in_store });
     setProducts((prev) =>
       prev.map((p) =>
@@ -61,7 +61,7 @@ export function AdminProducts() {
     );
   }
 
-  async function handleDelete(product: DbProduct) {
+  async function handleDelete(product: ProductWithCategory) {
     if (!window.confirm(`Excluir "${product.name}"? Esta ação não pode ser desfeita.`)) {
       return;
     }
@@ -116,7 +116,7 @@ export function AdminProducts() {
                   />
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium text-text">{product.name}</p>
-                    <p className="text-xs text-text-muted">{product.category}</p>
+                    <p className="text-xs text-text-muted">{product.category?.name}</p>
                     <p className="mt-0.5 font-semibold text-primary">
                       {product.is_custom_order ? "Sob orçamento" : currency.format(product.price)}
                     </p>
@@ -183,7 +183,7 @@ export function AdminProducts() {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-text-muted">
-                      {product.category}
+                      {product.category?.name}
                     </td>
                     <td className="px-4 py-3 font-semibold text-primary">
                       {product.is_custom_order ? "Sob orçamento" : currency.format(product.price)}

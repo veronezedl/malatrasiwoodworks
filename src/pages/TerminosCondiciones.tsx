@@ -77,9 +77,9 @@ export function TerminosCondiciones() {
             5. Formas de pagamento
           </h2>
           <p className="mt-2">
-            Aceitamos Pix, transferência bancária, dinheiro ou outra forma a
-            combinar diretamente com você após a confirmação do pedido. Não
-            processamos pagamentos online neste site.
+            Aceitamos Pix, dinheiro ou outra forma a combinar diretamente com
+            você após a confirmação do pedido. Não processamos pagamentos
+            online neste site.
           </p>
         </section>
 

@@ -88,7 +88,7 @@ create type public.order_status as enum (
 
 -- Sem gateway de pagamento por enquanto — apenas registra a forma combinada
 -- com o cliente. O admin controla manualmente payment_status.
-create type public.payment_method as enum ('pix', 'transferencia', 'dinheiro', 'a_combinar');
+create type public.payment_method as enum ('pix', 'dinheiro', 'a_combinar');
 create type public.payment_status as enum ('pending', 'paid');
 
 create table public.orders (
@@ -491,23 +491,19 @@ create policy "avatars_bucket_delete_own" on storage.objects
     bucket_id = 'avatars' and (storage.foldername(name))[1] = auth.uid()::text
   );
 
--- Fotos de referência anexadas a um pedido de orçamento — mesmo padrão de avatars.
+-- Fotos de referência anexadas a um pedido de orçamento. Insert é público
+-- (mesmo padrão de engravings) porque o orçamento sob medida também pode
+-- ser enviado sem login — são só imagens de referência, sem dado sensível.
 insert into storage.buckets (id, name, public)
 values ('quotes', 'quotes', true)
 on conflict (id) do nothing;
 
 create policy "quotes_bucket_select_public" on storage.objects
   for select using (bucket_id = 'quotes');
-create policy "quotes_bucket_insert_own" on storage.objects
-  for insert with check (
-    bucket_id = 'quotes'
-    and ((storage.foldername(name))[1] = auth.uid()::text or public.is_admin())
-  );
-create policy "quotes_bucket_delete_own" on storage.objects
-  for delete using (
-    bucket_id = 'quotes'
-    and ((storage.foldername(name))[1] = auth.uid()::text or public.is_admin())
-  );
+create policy "quotes_bucket_insert_public" on storage.objects
+  for insert with check (bucket_id = 'quotes');
+create policy "quotes_bucket_delete_admin" on storage.objects
+  for delete using (bucket_id = 'quotes' and public.is_admin());
 
 -- Imagens de gravação anexadas no checkout (logo/arte a gravar na peça).
 -- Insert é público (sem exigir auth.uid()) porque o checkout de convidado

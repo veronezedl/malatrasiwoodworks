@@ -13,6 +13,7 @@
 //   STORE_ADMIN_EMAIL            para o aviso de pedido novo ao admin
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { renderProposalEmailHtml } from "../_shared/emailTemplate.ts";
 
 const STATUS_LABELS: Record<string, string> = {
   pending: "Pendente",
@@ -186,7 +187,67 @@ Deno.serve(async (req) => {
     // ─── Email via Resend ───────────────────────────────────────────────
     const resendKey = Deno.env.get("RESEND_API_KEY");
     const fromEmail = Deno.env.get("RESEND_FROM_EMAIL");
-    if (resendKey && fromEmail) {
+    const siteUrl = Deno.env.get("SITE_URL") ?? "https://malatrasi-woodworks.vercel.app";
+
+    if (resendKey && fromEmail && isNewOrder) {
+      // Pedido novo: extrato de itens/valores no layout "Proposta Comercial"
+      // (ver ../_shared/emailTemplate.ts), no lugar do email com tracker —
+      // esse é o "extrato do pedido" pedido pelo cliente. Mudanças de status
+      // seguintes continuam usando o tracker, no bloco abaixo.
+      const items = (order.order_items ?? []) as OrderItemRow[];
+      // Pedido pago via Mercado Pago só é criado ANTES do redirect pro
+      // checkout — nesse momento ainda não sabemos se o pagamento foi
+      // aprovado, então o e-mail de criação não pode dizer "confirmado".
+      // A confirmação de verdade chega depois via mercadopago-webhook
+      // (status muda pra "confirmed", cai no ramo de tracker abaixo).
+      const isPendingMercadoPago =
+        order.payment_method === "mercadopago" && order.payment_status !== "paid";
+      const paymentInfo =
+        order.payment_method === "mercadopago"
+          ? order.payment_status === "paid"
+            ? "Já pago via Mercado Pago."
+            : "Pendente — pagamento pelo Mercado Pago."
+          : undefined;
+      const emailRes = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${resendKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: fromEmail,
+          to: order.customer.email,
+          subject: isPendingMercadoPago
+            ? `Pedido ${order.order_number} recebido — Malatrasi WoodWorks`
+            : `Pedido ${order.order_number} confirmado — Malatrasi WoodWorks`,
+          html: renderProposalEmailHtml({
+            kind: "pedido",
+            customerName: order.customer.full_name,
+            heading: isPendingMercadoPago
+              ? `Pedido recebido — ${order.order_number}`
+              : `Pedido confirmado — ${order.order_number}`,
+            introText: isPendingMercadoPago
+              ? "Recebemos seu pedido! Assim que o Mercado Pago confirmar o pagamento, seu pedido é confirmado automaticamente."
+              : "Recebemos seu pedido! Confira abaixo os itens e valores. Você pode acompanhar o status na sua conta.",
+            items: items.map((item) => ({
+              description: item.product_name,
+              quantity: item.quantity,
+              unitPrice: item.unit_price,
+              total: item.unit_price * item.quantity,
+            })),
+            subtotal: order.subtotal,
+            shippingCost: order.shipping_cost ?? 0,
+            shippingLabel: order.shipping_method_name,
+            total: order.total,
+            estimatedDays: null,
+            isEstimate: false,
+            paymentInfo,
+            siteUrl,
+          }),
+        }),
+      });
+      notifiedEmail = emailRes.ok;
+    } else if (resendKey && fromEmail) {
       const emailRes = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: {
@@ -263,7 +324,7 @@ Deno.serve(async (req) => {
                               <div style="margin-top:6px;font-size:13px;line-height:1.6;color:#1f1710;">
                                 ${order.shipping_full_name}<br />
                                 ${order.shipping_address_line1}${order.shipping_address_line2 ? `, ${order.shipping_address_line2}` : ""}<br />
-                                ${order.shipping_postal_code} ${order.shipping_city}${order.shipping_region ? `, ${order.shipping_region}` : ""}<br />
+                                ${order.shipping_neighborhood ? `${order.shipping_neighborhood} · ` : ""}${order.shipping_postal_code} ${order.shipping_city}${order.shipping_region ? `, ${order.shipping_region}` : ""}<br />
                                 ${order.shipping_country_code}
                               </div>
                             </td>

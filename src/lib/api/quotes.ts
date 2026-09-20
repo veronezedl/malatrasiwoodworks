@@ -31,7 +31,7 @@ export async function createQuoteRequest(params: {
   widthCm?: number | null;
   lengthCm?: number | null;
   heightCm?: number | null;
-  hasHandle?: boolean;
+  handleModelId?: string | null;
   estimatedPrice?: number | null;
 }): Promise<DbQuoteRequest> {
   const { data, error } = await supabase
@@ -47,7 +47,7 @@ export async function createQuoteRequest(params: {
       width_cm: params.widthCm ?? null,
       length_cm: params.lengthCm ?? null,
       height_cm: params.heightCm ?? null,
-      has_handle: params.hasHandle ?? false,
+      handle_model_id: params.handleModelId || null,
       estimated_price: params.estimatedPrice ?? null,
     })
     .select()
@@ -73,12 +73,69 @@ export async function uploadQuoteReferenceImage(
   return data.publicUrl;
 }
 
+// Upload de imagem de referência para quem envia o orçamento sem login.
+export async function uploadGuestQuoteReferenceImage(file: File): Promise<string> {
+  const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+  const path = `guest/${crypto.randomUUID()}.${ext}`;
+  const { error: uploadError } = await supabase.storage
+    .from("quotes")
+    .upload(path, file, { cacheControl: "3600" });
+  if (uploadError) throw uploadError;
+  const { data } = supabase.storage.from("quotes").getPublicUrl(path);
+  return data.publicUrl;
+}
+
+// Envia um orçamento sob encomenda sem exigir conta — cria um cliente
+// "rascunho" (auth_user_id nulo) via edge function com service role, no
+// mesmo padrão do checkout de convidado. Se o cliente criar conta depois
+// com o mesmo email, claim-guest-customer vincula esse orçamento a ela.
+export async function createGuestQuoteRequest(params: {
+  customer: { fullName: string; email: string; phone: string };
+  description: string;
+  woodType?: string | null;
+  dimensions?: string | null;
+  referenceImageUrl?: string | null;
+  productType?: string | null;
+  widthCm?: number | null;
+  lengthCm?: number | null;
+  heightCm?: number | null;
+  handleModelId?: string | null;
+  estimatedPrice?: number | null;
+}): Promise<DbQuoteRequest> {
+  const { data, error } = await supabase.functions.invoke("guest-quote-request", {
+    body: {
+      customer: {
+        full_name: params.customer.fullName,
+        email: params.customer.email,
+        phone: params.customer.phone,
+      },
+      description: params.description,
+      wood_type: params.woodType || null,
+      dimensions: params.dimensions || null,
+      reference_image_url: params.referenceImageUrl || null,
+      product_type: params.productType || null,
+      width_cm: params.widthCm ?? null,
+      length_cm: params.lengthCm ?? null,
+      height_cm: params.heightCm ?? null,
+      handle_model_id: params.handleModelId || null,
+      estimated_price: params.estimatedPrice ?? null,
+    },
+  });
+  if (error || data?.error) {
+    throw new Error(data?.error || "Não foi possível enviar o pedido de orçamento.");
+  }
+  return data.quote as DbQuoteRequest;
+}
+
 // ─── Admin ──────────────────────────────────────────────────────────────
+
+const QUOTE_WITH_CUSTOMER_SELECT =
+  "*, customer:customers(full_name, email, phone), handle_model:handle_models(name)";
 
 export async function listQuoteRequests(): Promise<QuoteWithCustomer[]> {
   const { data, error } = await supabase
     .from("quote_requests")
-    .select("*, customer:customers(full_name, email, phone)")
+    .select(QUOTE_WITH_CUSTOMER_SELECT)
     .order("created_at", { ascending: false });
   if (error) throw error;
   return (data ?? []) as unknown as QuoteWithCustomer[];
@@ -87,7 +144,7 @@ export async function listQuoteRequests(): Promise<QuoteWithCustomer[]> {
 export async function getQuoteRequest(id: string): Promise<QuoteWithCustomer | null> {
   const { data, error } = await supabase
     .from("quote_requests")
-    .select("*, customer:customers(full_name, email, phone)")
+    .select(QUOTE_WITH_CUSTOMER_SELECT)
     .eq("id", id)
     .maybeSingle();
   if (error) throw error;
@@ -136,6 +193,7 @@ export async function convertQuoteToOrder(
       shipping_phone: customer.phone,
       shipping_address_line1: customer.address_line1,
       shipping_address_line2: customer.address_line2,
+      shipping_neighborhood: customer.neighborhood,
       shipping_postal_code: customer.postal_code,
       shipping_city: customer.city,
       shipping_region: customer.region,

@@ -129,6 +129,7 @@ export function AdminOrderQuickView({ orderId }: { orderId: string }) {
                   ? `, ${order.shipping_address_line2}`
                   : ""}
                 <br />
+                {order.shipping_neighborhood ? `${order.shipping_neighborhood} · ` : ""}
                 {order.shipping_postal_code} {order.shipping_city}
                 {order.shipping_region ? `, ${order.shipping_region}` : ""}
                 <br />

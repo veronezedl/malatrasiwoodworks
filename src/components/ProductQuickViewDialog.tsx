@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/hooks/use-cart";
 import { useToast } from "@/hooks/use-toast";
+import { ProductImageCarousel } from "@/components/ProductImageCarousel";
 
 const currency = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -37,42 +38,43 @@ export function ProductQuickViewDialog({
           <DialogTitle className="sr-only">{product.name}</DialogTitle>
         </DialogHeader>
 
-        <img
-          src={product.image}
-          alt={product.name}
-          className="aspect-square w-full rounded-brand object-cover"
-        />
+        <div className="flex gap-4">
+          <ProductImageCarousel
+            images={product.images}
+            alt={product.name}
+            className="aspect-square w-28 shrink-0 overflow-hidden rounded-brand sm:w-36"
+          />
 
-        <div>
-          <span className="text-xs font-semibold uppercase tracking-widest2 text-accent">
-            {product.category}
-          </span>
-          <h2 className="mt-1 font-heading text-2xl font-semibold text-primary">
-            {product.name}
-          </h2>
-          <p className="mt-2 font-heading text-xl font-bold text-primary">
-            {product.isCustomOrder ? "Sob orçamento" : currency.format(product.price)}
-          </p>
+          <div className="min-w-0">
+            <span className="text-xs font-semibold uppercase tracking-widest2 text-accent">
+              {product.category}
+            </span>
+            <h2 className="mt-0.5 font-heading text-lg font-semibold leading-tight text-primary sm:text-xl">
+              {product.name}
+            </h2>
+            <p className="mt-1 font-heading text-lg font-bold text-primary">
+              {product.isCustomOrder ? "Sob orçamento" : currency.format(product.price)}
+            </p>
+            <div className="mt-2 flex flex-wrap gap-1.5 text-xs font-medium text-text-muted">
+              <span className="flex items-center gap-1 rounded-full bg-bg-muted px-2 py-0.5">
+                <Hammer className="size-3" /> Feito à mão
+              </span>
+              {product.woodType && (
+                <span className="flex items-center gap-1 rounded-full bg-bg-muted px-2 py-0.5">
+                  <Ruler className="size-3" /> {product.woodType}
+                </span>
+              )}
+            </div>
+          </div>
         </div>
 
-        <p className="text-sm leading-relaxed text-text-muted">
+        <p className="line-clamp-3 text-sm leading-relaxed text-text-muted">
           {product.description}
         </p>
 
-        <div className="flex flex-wrap gap-2 text-xs font-medium text-text-muted">
-          <span className="flex items-center gap-1 rounded-full bg-bg-muted px-2.5 py-1">
-            <Hammer className="size-3.5" /> Feito à mão
-          </span>
-          {product.woodType && (
-            <span className="flex items-center gap-1 rounded-full bg-bg-muted px-2.5 py-1">
-              <Ruler className="size-3.5" /> {product.woodType}
-            </span>
-          )}
-        </div>
-
-        <div className="flex flex-col gap-2 sm:flex-row">
+        <div className="flex flex-wrap justify-center gap-2">
           {product.isCustomOrder ? (
-            <Button asChild variant="accent" className="flex-1">
+            <Button asChild variant="accent" size="sm">
               <Link to={`/orcamento?produto=${product.slug}`}>
                 Solicitar orçamento
               </Link>
@@ -80,7 +82,7 @@ export function ProductQuickViewDialog({
           ) : (
             <Button
               variant="accent"
-              className="flex-1"
+              size="sm"
               onClick={() => {
                 if (addItem(product)) {
                   showToast("Produto adicionado ao carrinho", product.name);
@@ -90,7 +92,7 @@ export function ProductQuickViewDialog({
               Adicionar ao carrinho
             </Button>
           )}
-          <Button asChild variant="outline" className="flex-1">
+          <Button asChild variant="outline" size="sm">
             <Link to={`/produto/${product.slug}`}>Ver página do produto</Link>
           </Button>
         </div>

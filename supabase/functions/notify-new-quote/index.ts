@@ -1,22 +1,21 @@
 // Supabase Edge Function: notify-new-quote
 //
 // Disparada quando um cliente envia um pedido de orçamento sob encomenda
-// (ver src/lib/api/quotes.ts → createQuoteRequest). Envia um email à equipe
-// da Malatrasi WoodWorks com os dados do cliente e a descrição da peça.
+// (ver src/lib/api/quotes.ts → createQuoteRequest e
+// supabase/functions/guest-quote-request). Envia um email interno à equipe
+// da Malatrasi WoodWorks e, também, um email de confirmação ao cliente no
+// layout "Proposta Comercial" (ver ../_shared/emailTemplate.ts).
 //
 // Variáveis de ambiente necessárias (Project Settings → Edge Functions → Secrets):
 //   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY  (injetadas automaticamente pelo Supabase)
 //   RESEND_API_KEY
 //   RESEND_FROM_EMAIL
 //   STORE_ADMIN_EMAIL     ex: "contato@malatrasiwoodworks.com.br"
+//   SITE_URL              ex: "https://malatrasi-woodworks.vercel.app" (usado para a URL do logo no e-mail)
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
+import { corsHeaders } from "../_shared/cors.ts";
+import { renderProposalEmailHtml } from "../_shared/emailTemplate.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -50,9 +49,12 @@ Deno.serve(async (req) => {
     }
 
     let notified = false;
+    let customerEmailError: string | null = null;
     const resendKey = Deno.env.get("RESEND_API_KEY");
     const fromEmail = Deno.env.get("RESEND_FROM_EMAIL");
     const adminEmail = Deno.env.get("STORE_ADMIN_EMAIL");
+    const siteUrl = Deno.env.get("SITE_URL") ?? "https://malatrasi-woodworks.vercel.app";
+
     if (resendKey && fromEmail && adminEmail) {
       const emailRes = await fetch("https://api.resend.com/emails", {
         method: "POST",
@@ -80,7 +82,55 @@ Deno.serve(async (req) => {
       notified = emailRes.ok;
     }
 
-    return new Response(JSON.stringify({ notified }), {
+    // Confirmação ao cliente, no layout "Proposta Comercial" — só o admin
+    // recebia notificação até aqui.
+    if (resendKey && fromEmail) {
+      const dimensionsLabel =
+        quote.width_cm && quote.length_cm
+          ? `${quote.width_cm} x ${quote.length_cm}${quote.height_cm ? ` x ${quote.height_cm}` : ""} cm`
+          : quote.dimensions;
+      const itemDescription = [quote.description, dimensionsLabel]
+        .filter(Boolean)
+        .join(" — ");
+
+      const customerEmailRes = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${resendKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: fromEmail,
+          to: quote.customer.email,
+          subject: "Recebemos seu pedido de orçamento — Malatrasi WoodWorks",
+          html: renderProposalEmailHtml({
+            kind: "orcamento",
+            customerName: quote.customer.full_name,
+            heading: "Solicitação de orçamento recebida",
+            introText:
+              "Recebemos seu pedido de orçamento sob medida e vamos analisar os detalhes. Em breve entramos em contato para confirmar o valor final.",
+            items: [
+              {
+                description: itemDescription,
+                quantity: 1,
+                unitPrice: quote.estimated_price ?? null,
+                total: quote.estimated_price ?? null,
+              },
+            ],
+            subtotal: quote.estimated_price ?? null,
+            total: quote.estimated_price ?? null,
+            estimatedDays: null,
+            isEstimate: true,
+            siteUrl,
+          }),
+        }),
+      });
+      if (!customerEmailRes.ok) {
+        customerEmailError = await customerEmailRes.text();
+      }
+    }
+
+    return new Response(JSON.stringify({ notified, customerEmailError }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {

@@ -8,6 +8,7 @@ export interface GuestCustomerInput {
   cpf_cnpj?: string;
   address_line1: string;
   address_line2?: string;
+  neighborhood?: string;
   postal_code: string;
   city: string;
   region?: string;

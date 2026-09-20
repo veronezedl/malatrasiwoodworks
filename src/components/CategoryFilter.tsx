@@ -1,15 +1,19 @@
 import { cn } from "@/lib/utils";
-import { FILTER_CATEGORIES, type FilterCategory } from "@/data/products";
+import { ALL_CATEGORIES_FILTER, type FilterCategory } from "@/data/products";
 
 interface CategoryFilterProps {
+  // Nomes das categorias ativas (vindas do admin) — "Todos" é adicionado
+  // automaticamente antes delas.
+  categories: string[];
   value: FilterCategory;
   onChange: (category: FilterCategory) => void;
 }
 
-export function CategoryFilter({ value, onChange }: CategoryFilterProps) {
+export function CategoryFilter({ categories, value, onChange }: CategoryFilterProps) {
+  const options = [ALL_CATEGORIES_FILTER, ...categories];
   return (
     <div className="flex flex-wrap gap-2">
-      {FILTER_CATEGORIES.map((category) => (
+      {options.map((category) => (
         <button
           key={category}
           type="button"

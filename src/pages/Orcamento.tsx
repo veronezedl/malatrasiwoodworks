@@ -4,10 +4,16 @@ import { Ruler, CheckCircle2 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { useSeo } from "@/hooks/use-seo";
 import { fetchMyCustomer } from "@/lib/api/customers";
-import { createQuoteRequest, uploadQuoteReferenceImage } from "@/lib/api/quotes";
+import {
+  createGuestQuoteRequest,
+  createQuoteRequest,
+  uploadGuestQuoteReferenceImage,
+  uploadQuoteReferenceImage,
+} from "@/lib/api/quotes";
 import { fetchProductBySlug } from "@/lib/api/catalog";
+import { listActiveHandleModels } from "@/lib/api/handleModels";
 import { PRODUCT_TYPES, calculateEstimate } from "@/lib/pricing";
-import type { DbCustomer } from "@/types/database";
+import type { DbCustomer, DbHandleModel } from "@/types/database";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,6 +27,7 @@ import {
 } from "@/components/ui/dialog";
 import { LoginForm } from "@/components/LoginForm";
 import { RegistroForm } from "@/components/RegistroForm";
+import { QuoteSizeSimulator } from "@/components/QuoteSizeSimulator";
 
 const currency = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -41,25 +48,38 @@ export function Orcamento() {
   const [authMode, setAuthMode] = React.useState<"login" | "registro">("login");
   const [authDialogOpen, setAuthDialogOpen] = React.useState(false);
 
+  const [guestName, setGuestName] = React.useState("");
+  const [guestEmail, setGuestEmail] = React.useState("");
+  const [guestPhone, setGuestPhone] = React.useState("");
+
   const [description, setDescription] = React.useState("");
   const [woodType, setWoodType] = React.useState("");
   const [productType, setProductType] = React.useState(PRODUCT_TYPES[0].value);
   const [widthCm, setWidthCm] = React.useState("");
   const [lengthCm, setLengthCm] = React.useState("");
   const [heightCm, setHeightCm] = React.useState("");
-  const [hasHandle, setHasHandle] = React.useState(false);
+  const [handleModels, setHandleModels] = React.useState<DbHandleModel[]>([]);
+  const [handleModelId, setHandleModelId] = React.useState("");
   const [referenceFile, setReferenceFile] = React.useState<File | null>(null);
   const [submitting, setSubmitting] = React.useState(false);
   const [submitted, setSubmitted] = React.useState(false);
   const [formError, setFormError] = React.useState<string | null>(null);
+
+  const selectedHandleModel = handleModels.find((m) => m.id === handleModelId) ?? null;
 
   const estimate = calculateEstimate({
     productType,
     widthCm: Number(widthCm),
     lengthCm: Number(lengthCm),
     heightCm: heightCm ? Number(heightCm) : null,
-    hasHandle,
+    handleSurcharge: selectedHandleModel?.price_surcharge ?? 0,
   });
+
+  React.useEffect(() => {
+    listActiveHandleModels()
+      .then(setHandleModels)
+      .catch(() => setHandleModels([]));
+  }, []);
 
   React.useEffect(() => {
     if (!productSlug) return;
@@ -89,45 +109,70 @@ export function Orcamento() {
       .finally(() => setCustomerLoading(false));
   }, [session]);
 
+  const isGuest = !session || !customer;
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!customer) return;
     setFormError(null);
     if (!description.trim()) {
       setFormError("Descreva a peça que você deseja.");
       return;
     }
+    if (isGuest) {
+      if (!guestName.trim()) return setFormError("Informe seu nome completo.");
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guestEmail)) return setFormError("Informe um email válido.");
+      if (!guestPhone.trim()) return setFormError("Informe um telefone para contato.");
+    }
 
     setSubmitting(true);
     try {
-      let referenceImageUrl: string | null = null;
-      if (referenceFile && customer.auth_user_id) {
-        referenceImageUrl = await uploadQuoteReferenceImage(
-          customer.auth_user_id,
-          referenceFile,
-        );
-      }
-
       const dimensionsSummary =
         widthCm && lengthCm
           ? `${widthCm} x ${lengthCm}${heightCm ? ` x ${heightCm}` : ""} cm${
-              hasHandle ? " · com cabo/alça" : ""
+              selectedHandleModel ? ` · ${selectedHandleModel.name}` : ""
             }`
           : null;
 
-      await createQuoteRequest({
-        customerId: customer.id,
-        description,
-        woodType: woodType || null,
-        dimensions: dimensionsSummary,
-        referenceImageUrl,
-        productType,
-        widthCm: widthCm ? Number(widthCm) : null,
-        lengthCm: lengthCm ? Number(lengthCm) : null,
-        heightCm: heightCm ? Number(heightCm) : null,
-        hasHandle,
-        estimatedPrice: estimate?.estimatedPrice ?? null,
-      });
+      if (isGuest) {
+        let referenceImageUrl: string | null = null;
+        if (referenceFile) {
+          referenceImageUrl = await uploadGuestQuoteReferenceImage(referenceFile);
+        }
+        await createGuestQuoteRequest({
+          customer: { fullName: guestName, email: guestEmail, phone: guestPhone },
+          description,
+          woodType: woodType || null,
+          dimensions: dimensionsSummary,
+          referenceImageUrl,
+          productType,
+          widthCm: widthCm ? Number(widthCm) : null,
+          lengthCm: lengthCm ? Number(lengthCm) : null,
+          heightCm: heightCm ? Number(heightCm) : null,
+          handleModelId: handleModelId || null,
+          estimatedPrice: estimate?.estimatedPrice ?? null,
+        });
+      } else {
+        let referenceImageUrl: string | null = null;
+        if (referenceFile && customer!.auth_user_id) {
+          referenceImageUrl = await uploadQuoteReferenceImage(
+            customer!.auth_user_id,
+            referenceFile,
+          );
+        }
+        await createQuoteRequest({
+          customerId: customer!.id,
+          description,
+          woodType: woodType || null,
+          dimensions: dimensionsSummary,
+          referenceImageUrl,
+          productType,
+          widthCm: widthCm ? Number(widthCm) : null,
+          lengthCm: lengthCm ? Number(lengthCm) : null,
+          heightCm: heightCm ? Number(heightCm) : null,
+          handleModelId: handleModelId || null,
+          estimatedPrice: estimate?.estimatedPrice ?? null,
+        });
+      }
       setSubmitted(true);
     } catch (err) {
       setFormError(
@@ -150,17 +195,54 @@ export function Orcamento() {
           Pedido de orçamento enviado!
         </h1>
         <p className="mt-2 text-sm text-text-muted">
-          Vamos analisar os detalhes e confirmar o valor final em breve. Você
-          pode acompanhar o status em "Meus orçamentos".
+          {isGuest
+            ? "Vamos analisar os detalhes e entrar em contato com você para confirmar o valor final."
+            : 'Vamos analisar os detalhes e confirmar o valor final em breve. Você pode acompanhar o status em "Meus orçamentos".'}
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-3">
-          <Button asChild variant="accent">
-            <Link to="/conta/orcamentos">Ver meus orçamentos</Link>
-          </Button>
+          {isGuest ? (
+            <Button
+              variant="accent"
+              onClick={() => {
+                setAuthMode("registro");
+                setAuthDialogOpen(true);
+              }}
+            >
+              Criar conta para acompanhar
+            </Button>
+          ) : (
+            <Button asChild variant="accent">
+              <Link to="/conta/orcamentos">Ver meus orçamentos</Link>
+            </Button>
+          )}
           <Button asChild variant="outline">
             <Link to="/produtos">Continuar navegando</Link>
           </Button>
         </div>
+
+        <Dialog open={authDialogOpen} onOpenChange={setAuthDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {authMode === "login" ? "Entrar" : "Crie sua conta"}
+              </DialogTitle>
+            </DialogHeader>
+            {authMode === "login" ? (
+              <LoginForm
+                idPrefix="quote-done-login"
+                onCreateAccount={() => setAuthMode("registro")}
+                onSuccess={() => setAuthDialogOpen(false)}
+              />
+            ) : (
+              <RegistroForm
+                idPrefix="quote-done-registro"
+                redirect={false}
+                onSuccess={() => setAuthDialogOpen(false)}
+                onLoginClick={() => setAuthMode("login")}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
       </section>
     );
   }
@@ -183,33 +265,6 @@ export function Orcamento() {
       <div className="mt-8 rounded-brand border border-black/10 bg-white p-6 sm:p-8">
         {loading || customerLoading ? (
           <p className="text-sm text-text-muted">Carregando...</p>
-        ) : !session || !customer ? (
-          <div className="text-center">
-            <p className="text-sm text-text-muted">
-              Para solicitar um orçamento, entre ou crie sua conta — é rápido
-              e usamos os mesmos dados para acompanhar seu pedido depois.
-            </p>
-            <div className="mt-4 flex flex-wrap justify-center gap-3">
-              <Button
-                variant="accent"
-                onClick={() => {
-                  setAuthMode("login");
-                  setAuthDialogOpen(true);
-                }}
-              >
-                Entrar
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setAuthMode("registro");
-                  setAuthDialogOpen(true);
-                }}
-              >
-                Criar conta
-              </Button>
-            </div>
-          </div>
         ) : (
           <form onSubmit={handleSubmit} noValidate>
             {formError && (
@@ -218,7 +273,65 @@ export function Orcamento() {
               </div>
             )}
 
-            <h2 className="font-heading text-sm font-semibold uppercase tracking-widest2 text-text-muted">
+            {isGuest ? (
+              <>
+                <h2 className="font-heading text-sm font-semibold uppercase tracking-widest2 text-text-muted">
+                  Seus dados
+                </h2>
+                <p className="mt-1 text-xs text-text-muted">
+                  Só para entrarmos em contato sobre o orçamento — não é
+                  necessário criar conta agora.{" "}
+                  <button
+                    type="button"
+                    className="font-semibold text-accent hover:underline"
+                    onClick={() => {
+                      setAuthMode("login");
+                      setAuthDialogOpen(true);
+                    }}
+                  >
+                    Já tem conta? Entrar
+                  </button>
+                </p>
+                <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <Label htmlFor="quote-guest-name">Nome completo</Label>
+                    <Input
+                      id="quote-guest-name"
+                      value={guestName}
+                      onChange={(e) => setGuestName(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="quote-guest-email">Email</Label>
+                    <Input
+                      id="quote-guest-email"
+                      type="email"
+                      value={guestEmail}
+                      onChange={(e) => setGuestEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="quote-guest-phone">Telefone / WhatsApp</Label>
+                    <Input
+                      id="quote-guest-phone"
+                      type="tel"
+                      value={guestPhone}
+                      onChange={(e) => setGuestPhone(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-text-muted">
+                Enviando como <strong className="text-primary">{customer?.full_name}</strong> (
+                {customer?.email})
+              </p>
+            )}
+
+            <h2 className="mt-6 font-heading text-sm font-semibold uppercase tracking-widest2 text-text-muted">
               Calculadora
             </h2>
             <div className="mt-3 grid gap-4 sm:grid-cols-2">
@@ -269,38 +382,51 @@ export function Orcamento() {
                   onChange={(e) => setHeightCm(e.target.value)}
                 />
               </div>
-              <div className="flex items-end pb-2.5">
-                <label className="flex items-center gap-2 text-sm text-text">
-                  <input
-                    type="checkbox"
-                    className="size-4 accent-accent"
-                    checked={hasHandle}
-                    onChange={(e) => setHasHandle(e.target.checked)}
-                  />
-                  Tem cabo / alça
-                </label>
+              <div className="space-y-1.5 sm:col-span-2">
+                <Label htmlFor="quote-handle-model">Modelo de cabo / alça</Label>
+                <Select
+                  id="quote-handle-model"
+                  value={handleModelId}
+                  onChange={(e) => setHandleModelId(e.target.value)}
+                >
+                  <option value="">Sem cabo/alça</option>
+                  {handleModels.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                      {m.price_surcharge > 0 ? ` (+${currency.format(m.price_surcharge)})` : ""}
+                    </option>
+                  ))}
+                </Select>
               </div>
             </div>
 
-            <div className="mt-4 rounded-brand bg-bg-muted p-4">
-              {estimate ? (
-                <>
-                  <p className="text-xs uppercase tracking-widest2 text-text-muted">
-                    Área: {estimate.areaM2.toFixed(2)} m²
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <QuoteSizeSimulator
+                widthCm={Number(widthCm)}
+                lengthCm={Number(lengthCm)}
+                heightCm={heightCm ? Number(heightCm) : null}
+                handleModelName={selectedHandleModel?.name ?? null}
+              />
+              <div className="rounded-brand bg-bg-muted p-4">
+                {estimate ? (
+                  <>
+                    <p className="text-xs uppercase tracking-widest2 text-text-muted">
+                      Área: {estimate.areaM2.toFixed(2)} m²
+                    </p>
+                    <p className="mt-1 font-heading text-2xl font-semibold text-primary">
+                      {currency.format(estimate.estimatedPrice)}
+                    </p>
+                    <p className="mt-1 text-xs text-text-muted">
+                      Valor estimado — confirmamos o preço final ao analisar seu
+                      pedido.
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-sm text-text-muted">
+                    Preencha largura e comprimento para ver uma estimativa.
                   </p>
-                  <p className="mt-1 font-heading text-2xl font-semibold text-primary">
-                    {currency.format(estimate.estimatedPrice)}
-                  </p>
-                  <p className="mt-1 text-xs text-text-muted">
-                    Valor estimado — confirmamos o preço final ao analisar seu
-                    pedido.
-                  </p>
-                </>
-              ) : (
-                <p className="text-sm text-text-muted">
-                  Preencha largura e comprimento para ver uma estimativa.
-                </p>
-              )}
+                )}
+              </div>
             </div>
 
             <h2 className="mt-6 font-heading text-sm font-semibold uppercase tracking-widest2 text-text-muted">

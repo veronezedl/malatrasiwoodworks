@@ -4,7 +4,6 @@ import {
   Minus,
   Plus,
   X,
-  Wallet,
   Truck,
   ChevronDown,
   CheckCircle2,
@@ -16,12 +15,14 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { fetchProductBySlug } from "@/lib/api/catalog";
-import { createOrder, uploadEngravingImage } from "@/lib/api/orders";
+import {
+  createMercadoPagoPreference,
+  createOrder,
+  uploadEngravingImage,
+} from "@/lib/api/orders";
 import { listActiveShippingMethods } from "@/lib/api/shipping";
 import { submitGuestOrder, type GuestCustomerInput } from "@/lib/api/guestCheckout";
 import {
-  PAYMENT_METHOD_LABELS,
-  PAYMENT_METHOD_OPTIONS,
   type DbCustomer,
   type DbOrder,
   type DbShippingMethod,
@@ -52,6 +53,10 @@ const currency = new Intl.NumberFormat("pt-BR", {
   currency: "BRL",
 });
 
+// Todo pedido é pago pelo Mercado Pago; o cliente escolhe Pix, cartão ou
+// boleto na página de lá.
+const PAYMENT_METHOD: PaymentMethod = "mercadopago";
+
 export function Carrito() {
   useSeo(
     "Seu carrinho · Malatrasi WoodWorks",
@@ -63,7 +68,6 @@ export function Carrito() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [placing, setPlacing] = React.useState(false);
-  const [paymentMethod, setPaymentMethod] = React.useState<PaymentMethod>("a_combinar");
   const [shippingMethods, setShippingMethods] = React.useState<DbShippingMethod[]>([]);
   const [shippingMethodId, setShippingMethodId] = React.useState<string | null>(null);
   const [loadingShipping, setLoadingShipping] = React.useState(true);
@@ -136,6 +140,31 @@ export function Carrito() {
   const shippingCost = selectedShipping?.price ?? 0;
   const total = subtotal + shippingCost;
 
+  // Depois de criar o pedido: se for Mercado Pago, tira o cliente do site e
+  // manda pra página de pagamento; senão, mostra o dialog de confirmação
+  // normal (pagamento combinado manualmente).
+  async function finishCheckout(order: DbOrder) {
+    if (order.payment_method === "mercadopago") {
+      try {
+        const { initPoint } = await createMercadoPagoPreference(order.id);
+        clearCart();
+        window.location.href = initPoint;
+        return;
+      } catch (err) {
+        showToast(
+          "Não foi possível iniciar o pagamento online",
+          err instanceof Error
+            ? err.message
+            : "Tente novamente ou escolha outra forma de pagamento.",
+        );
+        // O pedido já ficou salvo (pending) — segue pro dialog normal, o
+        // admin consegue ver e combinar o pagamento manualmente também.
+      }
+    }
+    clearCart();
+    setSuccessOrder(order);
+  }
+
   async function handleCheckout() {
     if (!isSupabaseConfigured) {
       showToast(
@@ -184,13 +213,12 @@ export function Carrito() {
       const order = await createOrder(
         customer as DbCustomer,
         items,
-        paymentMethod,
+        PAYMENT_METHOD,
         selectedShipping,
         { engravingText: engravingText || null, engravingImageUrl },
       );
 
-      clearCart();
-      setSuccessOrder(order);
+      await finishCheckout(order);
     } catch (err) {
       showToast(
         "Não foi possível concluir o pedido",
@@ -222,14 +250,13 @@ export function Carrito() {
       customer,
       items: items.map((item) => ({ product_id: item.id, quantity: item.quantity })),
       shipping_method_id: selectedShipping.id,
-      payment_method: paymentMethod,
+      payment_method: PAYMENT_METHOD,
       engraving_text: engravingText || null,
       engraving_image_url: engravingImageUrl,
     });
 
     setLoginDialogOpen(false);
-    clearCart();
-    setSuccessOrder(order);
+    await finishCheckout(order);
   }
 
   // Se o login (ou o cadastro) abriu como popup a partir de "Finalizar
@@ -389,34 +416,9 @@ export function Carrito() {
         <span>{currency.format(total)}</span>
       </div>
       <p className="mt-1 text-xs text-text-muted">
-        O pagamento é combinado após a confirmação do pedido.
+        Você paga com segurança na página do Mercado Pago, escolhendo Pix,
+        cartão ou boleto.
       </p>
-
-      <div className="mt-5">
-        <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">
-          Forma de pagamento
-        </p>
-        <div className="mt-2 grid grid-cols-2 gap-2">
-          {PAYMENT_METHOD_OPTIONS.map((method) => {
-            const selected = paymentMethod === method;
-            return (
-              <button
-                key={method}
-                type="button"
-                onClick={() => setPaymentMethod(method)}
-                className={`flex items-center justify-center gap-2 rounded-brand border px-3 py-2.5 text-sm font-medium transition-colors ${
-                  selected
-                    ? "border-accent bg-accent/10 text-accent"
-                    : "border-black/10 bg-white text-text-muted hover:border-black/20"
-                }`}
-              >
-                <Wallet className="size-4" />
-                {PAYMENT_METHOD_LABELS[method]}
-              </button>
-            );
-          })}
-        </div>
-      </div>
 
       <Button
         variant="accent"
@@ -607,7 +609,6 @@ export function Carrito() {
           ) : (
             <GuestCheckoutForm
               idPrefix="cart-guest"
-              paymentMethod={paymentMethod}
               onLoginClick={() => setAuthMode("login")}
               onSubmit={handleGuestCheckout}
             />

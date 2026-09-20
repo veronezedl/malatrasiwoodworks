@@ -177,7 +177,7 @@ function QuoteDetailDialog({
             <h3 className="text-xs font-semibold uppercase tracking-wide text-text-muted">
               Cabo / alça
             </h3>
-            <p className="mt-1 text-text">{quote.has_handle ? "Sim" : "Não"}</p>
+            <p className="mt-1 text-text">{quote.handle_model?.name ?? "—"}</p>
           </div>
         </div>
 

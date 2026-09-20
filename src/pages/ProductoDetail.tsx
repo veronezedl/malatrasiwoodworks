@@ -8,6 +8,7 @@ import { useCart } from "@/hooks/use-cart";
 import { useToast } from "@/hooks/use-toast";
 import { useSeo } from "@/hooks/use-seo";
 import { ProductReviews } from "@/components/ProductReviews";
+import { ProductImageCarousel } from "@/components/ProductImageCarousel";
 
 const currency = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -58,15 +59,13 @@ export function ProductoDetail() {
       </nav>
 
       <div className="grid gap-10 lg:grid-cols-2">
-        <div className="overflow-hidden rounded-brand bg-bg-muted">
-          <img
-            src={product.image}
-            alt={product.name}
-            className="aspect-square w-full object-cover"
-          />
-        </div>
+        <ProductImageCarousel
+          images={product.images}
+          alt={product.name}
+          className="aspect-square min-w-0 w-full overflow-hidden rounded-brand bg-bg-muted"
+        />
 
-        <div>
+        <div className="min-w-0">
           <span className="text-xs font-semibold uppercase tracking-wide text-accent">
             {product.category}
           </span>
@@ -102,8 +101,8 @@ export function ProductoDetail() {
               </p>
             </div>
           ) : (
-            <div className="mt-6 flex items-center gap-4">
-              <div className="flex items-center rounded-brand border border-black/10">
+            <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center">
+              <div className="flex items-center self-start rounded-brand border border-black/10">
                 <button
                   type="button"
                   aria-label="Diminuir"

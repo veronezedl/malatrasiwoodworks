@@ -2,6 +2,8 @@ import * as React from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { BR_STATES } from "@/data/states";
+import { formatCep } from "@/lib/cep";
+import { useCepLookup } from "@/hooks/use-cep-lookup";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -17,6 +19,7 @@ interface FormState {
   cpfCnpj: string;
   addressLine1: string;
   addressLine2: string;
+  neighborhood: string;
   postalCode: string;
   city: string;
   region: string;
@@ -31,6 +34,7 @@ const initialState: FormState = {
   cpfCnpj: "",
   addressLine1: "",
   addressLine2: "",
+  neighborhood: "",
   postalCode: "",
   city: "",
   region: "",
@@ -71,6 +75,29 @@ export function RegistroForm({
     setForm((f) => ({ ...f, [key]: value }));
   }
 
+  const cep = useCepLookup((address) => {
+    setForm((f) => ({
+      ...f,
+      addressLine1: address.street || f.addressLine1,
+      neighborhood: address.neighborhood || f.neighborhood,
+      city: address.city || f.city,
+      region: address.uf || f.region,
+    }));
+    setErrors((e) => ({
+      ...e,
+      addressLine1: undefined,
+      neighborhood: undefined,
+      city: undefined,
+    }));
+    document.getElementById(`${idPrefix}-addressLine1`)?.focus();
+  });
+
+  function handleCepChange(value: string) {
+    const masked = formatCep(value);
+    update("postalCode", masked);
+    cep.search(masked);
+  }
+
   function validate(): boolean {
     const next: Partial<Record<keyof FormState, string>> = {};
     if (!form.fullName.trim()) next.fullName = "Informe seu nome completo.";
@@ -82,6 +109,7 @@ export function RegistroForm({
     }
     if (!form.phone.trim()) next.phone = "Informe um telefone de contato.";
     if (!form.addressLine1.trim()) next.addressLine1 = "Informe seu endereço.";
+    if (!form.neighborhood.trim()) next.neighborhood = "Informe o bairro.";
     if (!form.postalCode.trim()) next.postalCode = "Informe o CEP.";
     if (!form.city.trim()) next.city = "Informe sua cidade.";
     setErrors(next);
@@ -142,6 +170,7 @@ export function RegistroForm({
         cpf_cnpj: form.cpfCnpj || null,
         address_line1: form.addressLine1,
         address_line2: form.addressLine2 || null,
+        neighborhood: form.neighborhood,
         postal_code: form.postalCode,
         city: form.city,
         region: form.region || null,
@@ -258,6 +287,33 @@ export function RegistroForm({
       </h2>
       <div className="mt-3 grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5 sm:col-span-2">
+          <Label htmlFor={`${idPrefix}-postalCode`}>CEP</Label>
+          <Input
+            id={`${idPrefix}-postalCode`}
+            inputMode="numeric"
+            autoComplete="postal-code"
+            placeholder="00000-000"
+            maxLength={9}
+            value={form.postalCode}
+            onChange={(e) => handleCepChange(e.target.value)}
+            aria-invalid={!!errors.postalCode}
+          />
+          {cep.status === "loading" && (
+            <p className="text-xs text-text-muted">Buscando endereço...</p>
+          )}
+          {cep.status === "notfound" && (
+            <p className="text-xs text-text-muted">
+              CEP não encontrado. Preencha o endereço manualmente.
+            </p>
+          )}
+          {cep.status === "error" && (
+            <p className="text-xs text-text-muted">
+              Não foi possível buscar o endereço. Preencha manualmente.
+            </p>
+          )}
+          {errors.postalCode && <p className="text-xs text-accent">{errors.postalCode}</p>}
+        </div>
+        <div className="space-y-1.5 sm:col-span-2">
           <Label htmlFor={`${idPrefix}-addressLine1`}>Endereço</Label>
           <Input
             id={`${idPrefix}-addressLine1`}
@@ -279,16 +335,14 @@ export function RegistroForm({
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor={`${idPrefix}-postalCode`}>CEP</Label>
+          <Label htmlFor={`${idPrefix}-neighborhood`}>Bairro</Label>
           <Input
-            id={`${idPrefix}-postalCode`}
-            value={form.postalCode}
-            onChange={(e) => update("postalCode", e.target.value)}
-            aria-invalid={!!errors.postalCode}
+            id={`${idPrefix}-neighborhood`}
+            value={form.neighborhood}
+            onChange={(e) => update("neighborhood", e.target.value)}
+            aria-invalid={!!errors.neighborhood}
           />
-          {errors.postalCode && (
-            <p className="text-xs text-accent">{errors.postalCode}</p>
-          )}
+          {errors.neighborhood && <p className="text-xs text-accent">{errors.neighborhood}</p>}
         </div>
         <div className="space-y-1.5">
           <Label htmlFor={`${idPrefix}-city`}>Cidade</Label>

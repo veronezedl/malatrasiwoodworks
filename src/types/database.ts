@@ -27,30 +27,31 @@ export const ORDER_STATUS_OPTIONS: OrderStatus[] = [
   "refunded",
 ];
 
-export type PaymentMethod = "pix" | "transferencia" | "dinheiro" | "a_combinar";
+export type PaymentMethod = "pix" | "dinheiro" | "a_combinar" | "mercadopago";
 
 export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   pix: "Pix",
-  transferencia: "Transferência bancária",
   dinheiro: "Dinheiro",
   a_combinar: "A combinar",
+  mercadopago: "Mercado Pago",
 };
 
 export const PAYMENT_METHOD_OPTIONS: PaymentMethod[] = [
   "pix",
-  "transferencia",
   "dinheiro",
   "a_combinar",
+  "mercadopago",
 ];
 
-export type PaymentStatus = "pending" | "paid";
+export type PaymentStatus = "pending" | "paid" | "failed";
 
 export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
   pending: "Pendente",
   paid: "Pago",
+  failed: "Falhou",
 };
 
-export const PAYMENT_STATUS_OPTIONS: PaymentStatus[] = ["pending", "paid"];
+export const PAYMENT_STATUS_OPTIONS: PaymentStatus[] = ["pending", "paid", "failed"];
 
 export interface DbCustomer {
   id: string;
@@ -64,6 +65,7 @@ export interface DbCustomer {
   cpf_cnpj: string | null;
   address_line1: string | null;
   address_line2: string | null;
+  neighborhood: string | null;
   postal_code: string | null;
   city: string | null;
   region: string | null;
@@ -79,9 +81,10 @@ export interface DbProduct {
   id: string;
   slug: string;
   name: string;
-  category: string;
+  category_id: string;
   price: number;
   image_url: string;
+  image_url_2: string | null;
   description: string;
   wood_type: string | null;
   is_custom_order: boolean;
@@ -90,6 +93,18 @@ export interface DbProduct {
   visible_in_store: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface DbCategory {
+  id: string;
+  name: string;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ProductWithCategory extends DbProduct {
+  category: Pick<DbCategory, "name"> | null;
 }
 
 export interface DbOrder {
@@ -108,6 +123,7 @@ export interface DbOrder {
   shipping_phone: string;
   shipping_address_line1: string;
   shipping_address_line2: string | null;
+  shipping_neighborhood: string | null;
   shipping_postal_code: string;
   shipping_city: string;
   shipping_region: string | null;
@@ -115,6 +131,9 @@ export interface DbOrder {
   admin_notes: string | null;
   engraving_text: string | null;
   engraving_image_url: string | null;
+  mp_preference_id: string | null;
+  mp_payment_id: string | null;
+  mp_status: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -198,7 +217,7 @@ export interface DbQuoteRequest {
   width_cm: number | null;
   length_cm: number | null;
   height_cm: number | null;
-  has_handle: boolean;
+  handle_model_id: string | null;
   estimated_price: number | null;
   status: QuoteStatus;
   quoted_price: number | null;
@@ -210,6 +229,7 @@ export interface DbQuoteRequest {
 
 export interface QuoteWithCustomer extends DbQuoteRequest {
   customer: Pick<DbCustomer, "full_name" | "email" | "phone">;
+  handle_model: Pick<DbHandleModel, "name"> | null;
 }
 
 export interface DbProductReview {
@@ -237,6 +257,24 @@ export interface DbShippingMethod {
   price: number;
   active: boolean;
   visible_in_store: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DbHandleModel {
+  id: string;
+  name: string;
+  price_surcharge: number;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DbGalleryPhoto {
+  id: string;
+  image_url: string;
+  caption: string | null;
+  active: boolean;
   created_at: string;
   updated_at: string;
 }

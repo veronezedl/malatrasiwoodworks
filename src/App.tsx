@@ -17,6 +17,7 @@ import { PoliticaPrivacidad } from "@/pages/PoliticaPrivacidad";
 import { TerminosCondiciones } from "@/pages/TerminosCondiciones";
 import { PoliticaDevoluciones } from "@/pages/PoliticaDevoluciones";
 import { Carrito } from "@/pages/Carrito";
+import { PedidoConfirmado } from "@/pages/PedidoConfirmado";
 import { Registro } from "@/pages/Registro";
 import { Login } from "@/pages/Login";
 import { RecuperarPassword } from "@/pages/RecuperarPassword";
@@ -34,10 +35,13 @@ import { AdminOrders } from "@/pages/admin/AdminOrders";
 import { AdminOrderDetail } from "@/pages/admin/AdminOrderDetail";
 import { AdminProducts } from "@/pages/admin/AdminProducts";
 import { AdminProductForm } from "@/pages/admin/AdminProductForm";
+import { AdminCategories } from "@/pages/admin/AdminCategories";
 import { AdminCustomers } from "@/pages/admin/AdminCustomers";
 import { AdminShipping } from "@/pages/admin/AdminShipping";
 import { AdminPromotions } from "@/pages/admin/AdminPromotions";
 import { AdminQuotes } from "@/pages/admin/AdminQuotes";
+import { AdminHandleModels } from "@/pages/admin/AdminHandleModels";
+import { AdminGallery } from "@/pages/admin/AdminGallery";
 import { AdminUsers } from "@/pages/admin/AdminUsers";
 
 function App() {
@@ -58,6 +62,7 @@ function App() {
               <Route path="termos" element={<TerminosCondiciones />} />
               <Route path="devolucoes" element={<PoliticaDevoluciones />} />
               <Route path="carrinho" element={<Carrito />} />
+              <Route path="pedido-confirmado" element={<PedidoConfirmado />} />
               <Route path="cadastro" element={<Registro />} />
               <Route path="login" element={<Login />} />
               <Route path="recuperar-senha" element={<RecuperarPassword />} />
@@ -80,10 +85,13 @@ function App() {
               <Route path="pedidos/:id" element={<AdminOrderDetail />} />
               <Route path="produtos" element={<AdminProducts />} />
               <Route path="produtos/novo" element={<AdminProductForm />} />
+              <Route path="categorias" element={<AdminCategories />} />
               <Route path="clientes" element={<AdminCustomers />} />
               <Route path="entregas" element={<AdminShipping />} />
               <Route path="promocoes" element={<AdminPromotions />} />
+              <Route path="fotos-clientes" element={<AdminGallery />} />
               <Route path="orcamentos" element={<AdminQuotes />} />
+              <Route path="modelos-de-alca" element={<AdminHandleModels />} />
               <Route path="usuarios" element={<AdminUsers />} />
             </Route>
           </Routes>

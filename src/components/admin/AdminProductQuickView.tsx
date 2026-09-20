@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Eye, Pencil, Trash2 } from "lucide-react";
-import type { DbProduct } from "@/types/database";
+import type { ProductWithCategory } from "@/types/database";
 import {
   Dialog,
   DialogContent,
@@ -17,7 +17,7 @@ const currency = new Intl.NumberFormat("pt-BR", {
 });
 
 interface AdminProductQuickViewProps {
-  product: DbProduct;
+  product: ProductWithCategory;
   onToggleActive: () => void;
   onToggleFeatured: () => void;
   onToggleVisibleInStore: () => void;
@@ -63,7 +63,7 @@ export function AdminProductQuickView({
         <div className="grid grid-cols-2 gap-3 text-sm">
           <div>
             <p className="text-xs text-text-muted">Categoria</p>
-            <p className="text-text">{product.category}</p>
+            <p className="text-text">{product.category?.name}</p>
           </div>
           <div>
             <p className="text-xs text-text-muted">Preço</p>

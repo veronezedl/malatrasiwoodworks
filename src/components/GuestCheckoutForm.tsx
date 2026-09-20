@@ -1,7 +1,8 @@
 import * as React from "react";
 import { BR_STATES } from "@/data/states";
+import { formatCep } from "@/lib/cep";
+import { useCepLookup } from "@/hooks/use-cep-lookup";
 import { saveGuestDraft, type GuestCustomerInput } from "@/lib/api/guestCheckout";
-import { PAYMENT_METHOD_LABELS, type PaymentMethod } from "@/types/database";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +15,7 @@ interface FormState {
   cpfCnpj: string;
   addressLine1: string;
   addressLine2: string;
+  neighborhood: string;
   postalCode: string;
   city: string;
   region: string;
@@ -27,6 +29,7 @@ const initialState: FormState = {
   cpfCnpj: "",
   addressLine1: "",
   addressLine2: "",
+  neighborhood: "",
   postalCode: "",
   city: "",
   region: "",
@@ -42,6 +45,7 @@ const FIELD_KEY_MAP: Record<keyof FormState, keyof GuestCustomerInput> = {
   cpfCnpj: "cpf_cnpj",
   addressLine1: "address_line1",
   addressLine2: "address_line2",
+  neighborhood: "neighborhood",
   postalCode: "postal_code",
   city: "city",
   region: "region",
@@ -55,14 +59,12 @@ const DRAFT_STORAGE_KEY = "mww-guest-checkout-draft-id";
 
 interface GuestCheckoutFormProps {
   idPrefix?: string;
-  paymentMethod: PaymentMethod;
   onLoginClick?: () => void;
   onSubmit: (customer: GuestCustomerInput, draftCustomerId: string | null) => Promise<void>;
 }
 
 export function GuestCheckoutForm({
   idPrefix = "guest",
-  paymentMethod,
   onLoginClick,
   onSubmit,
 }: GuestCheckoutFormProps) {
@@ -103,12 +105,42 @@ export function GuestCheckoutForm({
     autosave({ [FIELD_KEY_MAP[key]]: value } as Partial<GuestCustomerInput>);
   }
 
+  const cep = useCepLookup((address) => {
+    setForm((f) => ({
+      ...f,
+      addressLine1: address.street || f.addressLine1,
+      neighborhood: address.neighborhood || f.neighborhood,
+      city: address.city || f.city,
+      region: address.uf || f.region,
+    }));
+    setErrors((e) => ({
+      ...e,
+      addressLine1: undefined,
+      neighborhood: undefined,
+      city: undefined,
+    }));
+    autosave({
+      ...(address.street ? { address_line1: address.street } : {}),
+      ...(address.neighborhood ? { neighborhood: address.neighborhood } : {}),
+      ...(address.city ? { city: address.city } : {}),
+      ...(address.uf ? { region: address.uf } : {}),
+    });
+    document.getElementById(`${idPrefix}-addressLine1`)?.focus();
+  });
+
+  function handleCepChange(value: string) {
+    const masked = formatCep(value);
+    update("postalCode", masked);
+    cep.search(masked);
+  }
+
   function validate(): boolean {
     const next: Partial<Record<keyof FormState, string>> = {};
     if (!form.fullName.trim()) next.fullName = "Informe seu nome completo.";
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) next.email = "Email inválido.";
     if (!form.phone.trim()) next.phone = "Informe um telefone de contato.";
     if (!form.addressLine1.trim()) next.addressLine1 = "Informe seu endereço.";
+    if (!form.neighborhood.trim()) next.neighborhood = "Informe o bairro.";
     if (!form.postalCode.trim()) next.postalCode = "Informe o CEP.";
     if (!form.city.trim()) next.city = "Informe sua cidade.";
     setErrors(next);
@@ -130,6 +162,7 @@ export function GuestCheckoutForm({
           cpf_cnpj: form.cpfCnpj || undefined,
           address_line1: form.addressLine1,
           address_line2: form.addressLine2 || undefined,
+          neighborhood: form.neighborhood,
           postal_code: form.postalCode,
           city: form.city,
           region: form.region || undefined,
@@ -207,6 +240,34 @@ export function GuestCheckoutForm({
       </h2>
       <div className="mt-3 grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5 sm:col-span-2">
+          <Label htmlFor={`${idPrefix}-postalCode`}>CEP</Label>
+          <Input
+            id={`${idPrefix}-postalCode`}
+            inputMode="numeric"
+            autoComplete="postal-code"
+            placeholder="00000-000"
+            maxLength={9}
+            value={form.postalCode}
+            onChange={(e) => handleCepChange(e.target.value)}
+            onBlur={() => handleBlur("postalCode")}
+            aria-invalid={!!errors.postalCode}
+          />
+          {cep.status === "loading" && (
+            <p className="text-xs text-text-muted">Buscando endereço...</p>
+          )}
+          {cep.status === "notfound" && (
+            <p className="text-xs text-text-muted">
+              CEP não encontrado. Preencha o endereço manualmente.
+            </p>
+          )}
+          {cep.status === "error" && (
+            <p className="text-xs text-text-muted">
+              Não foi possível buscar o endereço. Preencha manualmente.
+            </p>
+          )}
+          {errors.postalCode && <p className="text-xs text-accent">{errors.postalCode}</p>}
+        </div>
+        <div className="space-y-1.5 sm:col-span-2">
           <Label htmlFor={`${idPrefix}-addressLine1`}>Endereço</Label>
           <Input
             id={`${idPrefix}-addressLine1`}
@@ -230,15 +291,15 @@ export function GuestCheckoutForm({
           />
         </div>
         <div className="space-y-1.5">
-          <Label htmlFor={`${idPrefix}-postalCode`}>CEP</Label>
+          <Label htmlFor={`${idPrefix}-neighborhood`}>Bairro</Label>
           <Input
-            id={`${idPrefix}-postalCode`}
-            value={form.postalCode}
-            onChange={(e) => update("postalCode", e.target.value)}
-            onBlur={() => handleBlur("postalCode")}
-            aria-invalid={!!errors.postalCode}
+            id={`${idPrefix}-neighborhood`}
+            value={form.neighborhood}
+            onChange={(e) => update("neighborhood", e.target.value)}
+            onBlur={() => handleBlur("neighborhood")}
+            aria-invalid={!!errors.neighborhood}
           />
-          {errors.postalCode && <p className="text-xs text-accent">{errors.postalCode}</p>}
+          {errors.neighborhood && <p className="text-xs text-accent">{errors.neighborhood}</p>}
         </div>
         <div className="space-y-1.5">
           <Label htmlFor={`${idPrefix}-city`}>Cidade</Label>
@@ -297,9 +358,7 @@ export function GuestCheckoutForm({
         {submitting ? "Processando..." : "Finalizar pedido"}
       </Button>
       <p className="mt-2 text-center text-xs text-text-muted">
-        {paymentMethod === "a_combinar"
-          ? "A forma de pagamento será combinada após a confirmação."
-          : `Pagamento combinado via ${PAYMENT_METHOD_LABELS[paymentMethod].toLowerCase()}.`}
+        Você escolhe Pix, cartão ou boleto na próxima etapa, no Mercado Pago.
       </p>
 
       {onLoginClick && (

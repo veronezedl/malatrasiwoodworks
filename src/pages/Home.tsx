@@ -2,29 +2,32 @@ import * as React from "react";
 import { Link } from "react-router-dom";
 import { useSeo } from "@/hooks/use-seo";
 import { useProducts } from "@/hooks/use-products";
+import { useCategories } from "@/hooks/use-categories";
 import { Hero } from "@/components/Hero";
 import { BenefitCards } from "@/components/TrustBadges";
 import { CategoryFilter } from "@/components/CategoryFilter";
 import { ProductGrid } from "@/components/ProductGrid";
 import { ReviewsSection } from "@/components/ReviewsSection";
+import { CustomerGallerySection } from "@/components/CustomerGallerySection";
 import { AboutSection } from "@/components/AboutSection";
 import { ContactSection } from "@/components/ContactSection";
 import { Reveal } from "@/components/Reveal";
-import { CATEGORY_TO_FILTER, type FilterCategory } from "@/data/products";
+import { ALL_CATEGORIES_FILTER, type FilterCategory } from "@/data/products";
 
 export function Home() {
   useSeo(
     "Malatrasi WoodWorks · Marcenaria artesanal sob medida",
     "Móveis e peças de madeira maciça, prontos ou sob encomenda. Acompanhe seu pedido do início à entrega.",
   );
-  const [category, setCategory] = React.useState<FilterCategory>("Todos");
+  const [category, setCategory] = React.useState<FilterCategory>(ALL_CATEGORIES_FILTER);
   const { products, loading, error } = useProducts();
+  const categories = useCategories();
 
   // A home só mostra a "vitrine": produtos marcados como destaque no admin,
   // não o catálogo completo (isso é /produtos).
   const featuredProducts = products.filter((p) => p.featured);
   const filtered = featuredProducts.filter(
-    (p) => category === "Todos" || CATEGORY_TO_FILTER[p.category] === category,
+    (p) => category === ALL_CATEGORIES_FILTER || p.category === category,
   );
 
   return (
@@ -52,7 +55,11 @@ export function Home() {
           </div>
 
           <div className="mb-8">
-            <CategoryFilter value={category} onChange={setCategory} />
+            <CategoryFilter
+              categories={categories.map((c) => c.name)}
+              value={category}
+              onChange={setCategory}
+            />
           </div>
 
           {loading ? (
@@ -67,6 +74,9 @@ export function Home() {
 
       <Reveal>
         <ReviewsSection />
+      </Reveal>
+      <Reveal>
+        <CustomerGallerySection />
       </Reveal>
       <Reveal>
         <AboutSection />

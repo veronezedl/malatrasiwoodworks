@@ -2,7 +2,8 @@ import * as React from "react";
 import { ImagePlus } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { createProduct, updateProduct, uploadProductImage } from "@/lib/api/products";
-import type { DbProduct } from "@/types/database";
+import { listCategories } from "@/lib/api/categories";
+import type { DbCategory, DbProduct } from "@/types/database";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +11,6 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { slugify } from "@/lib/slug";
-import { CATEGORIES } from "@/lib/product-constants";
 
 interface ProductFormProps {
   // null = criar produto novo.
@@ -24,9 +24,11 @@ export function ProductForm({ productId, onSaved }: ProductFormProps) {
 
   const [name, setName] = React.useState("");
   const [slug, setSlug] = React.useState("");
-  const [category, setCategory] = React.useState(CATEGORIES[0]);
+  const [categories, setCategories] = React.useState<DbCategory[]>([]);
+  const [categoryId, setCategoryId] = React.useState("");
   const [price, setPrice] = React.useState("");
   const [imageUrl, setImageUrl] = React.useState("");
+  const [imageUrl2, setImageUrl2] = React.useState("");
   const [description, setDescription] = React.useState("");
   const [woodType, setWoodType] = React.useState("");
   const [isCustomOrder, setIsCustomOrder] = React.useState(false);
@@ -36,7 +38,18 @@ export function ProductForm({ productId, onSaved }: ProductFormProps) {
   const [loading, setLoading] = React.useState(!isNew);
   const [saving, setSaving] = React.useState(false);
   const [uploadingImage, setUploadingImage] = React.useState(false);
+  const [uploadingImage2, setUploadingImage2] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const fileInputRef2 = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    listCategories()
+      .then((cats) => {
+        setCategories(cats);
+        setCategoryId((current) => current || cats[0]?.id || "");
+      })
+      .catch(() => setCategories([]));
+  }, []);
 
   React.useEffect(() => {
     if (isNew || !productId) return;
@@ -50,9 +63,10 @@ export function ProductForm({ productId, onSaved }: ProductFormProps) {
         if (product) {
           setName(product.name);
           setSlug(product.slug);
-          setCategory(product.category);
+          setCategoryId(product.category_id);
           setPrice(String(product.price));
           setImageUrl(product.image_url);
+          setImageUrl2(product.image_url_2 ?? "");
           setDescription(product.description);
           setWoodType(product.wood_type ?? "");
           setIsCustomOrder(product.is_custom_order);
@@ -71,9 +85,10 @@ export function ProductForm({ productId, onSaved }: ProductFormProps) {
       const input = {
         name,
         slug: slug || slugify(name),
-        category,
+        category_id: categoryId,
         price: Number(price) || 0,
         image_url: imageUrl,
+        image_url_2: imageUrl2 || null,
         description,
         wood_type: woodType || null,
         is_custom_order: isCustomOrder,
@@ -112,6 +127,22 @@ export function ProductForm({ productId, onSaved }: ProductFormProps) {
     }
   }
 
+  async function handleImageFile2(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingImage2(true);
+    try {
+      const url = await uploadProductImage(file);
+      setImageUrl2(url);
+      showToast("Imagem enviada");
+    } catch (err) {
+      showToast("Não foi possível enviar a imagem", err instanceof Error ? err.message : undefined);
+    } finally {
+      setUploadingImage2(false);
+      if (fileInputRef2.current) fileInputRef2.current.value = "";
+    }
+  }
+
   if (loading) {
     return <p className="text-text-muted">Carregando...</p>;
   }
@@ -141,15 +172,23 @@ export function ProductForm({ productId, onSaved }: ProductFormProps) {
           <Label htmlFor="p-category">Categoria</Label>
           <Select
             id="p-category"
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
+            value={categoryId}
+            onChange={(e) => setCategoryId(e.target.value)}
+            required
           >
-            {CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
+            {categories.length === 0 && <option value="">Nenhuma categoria cadastrada</option>}
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+                {!c.active ? " (inativa)" : ""}
               </option>
             ))}
           </Select>
+          {categories.length === 0 && (
+            <p className="text-xs text-accent">
+              Cadastre uma categoria em Categorias antes de criar produtos.
+            </p>
+          )}
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="p-price">
@@ -167,7 +206,12 @@ export function ProductForm({ productId, onSaved }: ProductFormProps) {
         </div>
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="p-image">Imagem do produto</Label>
+        <Label htmlFor="p-image">Imagem 1 do produto</Label>
+        <p className="text-xs text-text-muted">
+          Recomendado: foto quadrada (proporção 1:1), pelo menos 1000×1000px,
+          em JPG ou PNG — o catálogo corta pra quadrado automaticamente, então
+          fotos já quadradas evitam corte estranho.
+        </p>
         <div className="flex items-center gap-3">
           {imageUrl ? (
             <img
@@ -203,6 +247,48 @@ export function ProductForm({ productId, onSaved }: ProductFormProps) {
           onChange={(e) => setImageUrl(e.target.value)}
           placeholder="https://... (ou envie um arquivo acima)"
           required
+        />
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="p-image-2">Imagem 2 do produto (opcional)</Label>
+        <p className="text-xs text-text-muted">
+          Mesmo formato da imagem 1 (quadrada, 1000×1000px ou mais). Se
+          preenchida, o catálogo mostra as duas imagens como carrossel.
+        </p>
+        <div className="flex items-center gap-3">
+          {imageUrl2 ? (
+            <img
+              src={imageUrl2}
+              alt=""
+              className="size-16 rounded-brand border border-black/10 object-cover"
+            />
+          ) : (
+            <div className="flex size-16 items-center justify-center rounded-brand border border-dashed border-black/20 text-text-muted">
+              <ImagePlus className="size-6" />
+            </div>
+          )}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => fileInputRef2.current?.click()}
+            disabled={uploadingImage2}
+          >
+            {uploadingImage2 ? "Enviando..." : "Enviar imagem"}
+          </Button>
+          <input
+            ref={fileInputRef2}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleImageFile2}
+          />
+        </div>
+        <Input
+          id="p-image-2"
+          value={imageUrl2}
+          onChange={(e) => setImageUrl2(e.target.value)}
+          placeholder="https://... (opcional, ou envie um arquivo acima)"
         />
       </div>
       <div className="space-y-1.5">

@@ -25,15 +25,14 @@ export const PRODUCT_TYPES: ProductTypeConfig[] = [
   { value: "outro", label: "Outro", pricePerM2: 1400, minPrice: 200 },
 ];
 
-// Acréscimo fixo para peças com cabo/alça (corte, encaixe e acabamento extra).
-export const HANDLE_SURCHARGE = 60;
-
 export interface EstimateInput {
   productType: string;
   widthCm: number;
   lengthCm: number;
   heightCm?: number | null;
-  hasHandle: boolean;
+  // Sobretaxa do modelo de alça/cabo escolhido (0 quando nenhum foi
+  // selecionado). Cadastrada pelo admin em handle_models.price_surcharge.
+  handleSurcharge?: number;
 }
 
 export interface EstimateResult {
@@ -46,14 +45,13 @@ export function getProductTypeConfig(value: string): ProductTypeConfig {
 }
 
 export function calculateEstimate(input: EstimateInput): EstimateResult | null {
-  const { widthCm, lengthCm, hasHandle } = input;
+  const { widthCm, lengthCm } = input;
   if (!widthCm || !lengthCm || widthCm <= 0 || lengthCm <= 0) return null;
 
   const areaM2 = (widthCm / 100) * (lengthCm / 100);
   const config = getProductTypeConfig(input.productType);
 
-  let price = areaM2 * config.pricePerM2;
-  if (hasHandle) price += HANDLE_SURCHARGE;
+  let price = areaM2 * config.pricePerM2 + (input.handleSurcharge ?? 0);
   price = Math.max(price, config.minPrice);
 
   return {

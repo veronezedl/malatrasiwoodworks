@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useCart } from "@/hooks/use-cart";
 import { useToast } from "@/hooks/use-toast";
 import { ProductQuickViewDialog } from "@/components/ProductQuickViewDialog";
+import { ProductImageCarousel } from "@/components/ProductImageCarousel";
 
 const currency = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -19,19 +20,24 @@ export function ProductCard({ product }: { product: Product }) {
 
   return (
     <div className="flex flex-col overflow-hidden rounded-brand border border-black/10 bg-white transition-shadow hover:shadow-md">
-      <button
-        type="button"
+      {/* div (não button) porque o carrossel já tem seus próprios botões de
+          seta — um <button> dentro de outro <button> é inválido em HTML. */}
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => setQuickViewOpen(true)}
-        className="block aspect-square overflow-hidden bg-bg-muted"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") setQuickViewOpen(true);
+        }}
+        className="group relative block aspect-square cursor-pointer overflow-hidden bg-bg-muted"
         aria-label={`Ver detalhes de ${product.name}`}
       >
-        <img
-          src={product.image}
+        <ProductImageCarousel
+          images={product.images}
           alt={product.name}
-          loading="lazy"
-          className="h-full w-full object-cover transition-transform hover:scale-105"
+          className="h-full w-full [&_img]:transition-transform [&_img]:group-hover:scale-105"
         />
-      </button>
+      </div>
 
       <div className="flex flex-1 flex-col gap-1.5 p-3 sm:gap-2 sm:p-4">
         <span className="text-[10px] font-medium uppercase tracking-wide text-accent sm:text-xs">
@@ -63,7 +69,10 @@ export function ProductCard({ product }: { product: Product }) {
 
         {product.isCustomOrder ? (
           <Button asChild size="sm" className="mt-auto text-xs sm:text-sm">
-            <Link to={`/orcamento?produto=${product.slug}`}>Solicitar orçamento</Link>
+            <Link to={`/orcamento?produto=${product.slug}`}>
+              <span className="sm:hidden">Orçamento</span>
+              <span className="hidden sm:inline">Solicitar orçamento</span>
+            </Link>
           </Button>
         ) : (
           <Button
@@ -76,7 +85,8 @@ export function ProductCard({ product }: { product: Product }) {
             }}
             aria-label={`Adicionar ${product.name} ao carrinho`}
           >
-            Adicionar ao carrinho
+            <span className="sm:hidden">Adicionar</span>
+            <span className="hidden sm:inline">Adicionar ao carrinho</span>
           </Button>
         )}
       </div>

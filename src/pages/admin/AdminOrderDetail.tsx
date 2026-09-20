@@ -210,6 +210,7 @@ export function AdminOrderDetail() {
                 ? `, ${order.shipping_address_line2}`
                 : ""}
               <br />
+              {order.shipping_neighborhood ? `${order.shipping_neighborhood} · ` : ""}
               {order.shipping_postal_code} {order.shipping_city}
               {order.shipping_region ? `, ${order.shipping_region}` : ""}
               <br />
@@ -260,6 +261,20 @@ export function AdminOrderDetail() {
               <PaymentStatusBadge status={order.payment_status} />
             </div>
 
+            {order.payment_method === "mercadopago" && (
+              <div className="mt-3 rounded-brand bg-bg-muted p-3 text-xs text-text-muted">
+                <p>
+                  Status no Mercado Pago:{" "}
+                  <span className="font-medium text-text">
+                    {order.mp_status ?? "aguardando pagamento"}
+                  </span>
+                </p>
+                {order.mp_payment_id && (
+                  <p className="mt-1">ID do pagamento: {order.mp_payment_id}</p>
+                )}
+              </div>
+            )}
+
             <div className="mt-4 border-t border-black/10 pt-4">
               <Label htmlFor="payment-status-select">Marcar pagamento como</Label>
               <Select
@@ -278,8 +293,9 @@ export function AdminOrderDetail() {
                 ))}
               </Select>
               <p className="mt-2 text-xs text-text-muted">
-                Não há cobrança automática — atualize isso manualmente quando
-                confirmar o recebimento do pagamento combinado com o cliente.
+                {order.payment_method === "mercadopago"
+                  ? "Pedidos pagos pelo Mercado Pago atualizam sozinhos quando o pagamento é aprovado — só mude aqui manualmente em caso de exceção."
+                  : "Não há cobrança automática — atualize isso manualmente quando confirmar o recebimento do pagamento combinado com o cliente."}
               </p>
             </div>
           </div>

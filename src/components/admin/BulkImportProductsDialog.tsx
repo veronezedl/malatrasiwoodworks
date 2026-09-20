@@ -2,7 +2,8 @@ import * as React from "react";
 import { Download, Upload, AlertTriangle } from "lucide-react";
 import { parseCsv } from "@/lib/csv";
 import { slugify } from "@/lib/slug";
-import { CATEGORIES } from "@/lib/product-constants";
+import { listCategories } from "@/lib/api/categories";
+import type { DbCategory } from "@/types/database";
 import {
   bulkCreateProducts,
   type BulkImportResult,
@@ -37,6 +38,10 @@ const COLUMN_ALIASES: Record<string, string> = {
   imagem: "image_url",
   image: "image_url",
   image_url: "image_url",
+  imagem2: "image_url_2",
+  imagem_2: "image_url_2",
+  image2: "image_url_2",
+  image_url_2: "image_url_2",
   descricao: "description",
   descrição: "description",
   description: "description",
@@ -54,8 +59,8 @@ const COLUMN_ALIASES: Record<string, string> = {
 };
 
 const TEMPLATE_CSV =
-  "nome,slug,categoria,preco,imagem,descricao,madeira,sob_encomenda,ativo,destaque,visivel\n" +
-  '"Tábua de Corte Artesanal","",Utilidades,180.00,https://exemplo.com/foto.jpg,"Tábua de corte em peça única.",Cumaru,false,true,false,true\n';
+  "nome,slug,categoria,preco,imagem,imagem2,descricao,madeira,sob_encomenda,ativo,destaque,visivel\n" +
+  '"Tábua de Corte Artesanal","",Utilidades,180.00,https://exemplo.com/foto.jpg,,"Tábua de corte em peça única.",Cumaru,false,true,false,true\n';
 
 function parseBoolean(value: string, fallback: boolean): boolean {
   const v = value.trim().toLowerCase();
@@ -69,9 +74,11 @@ interface ParsedRow {
   row: number;
   name: string;
   slug: string;
-  category: string;
+  categoryName: string;
+  categoryId: string | null;
   price: string;
   imageUrl: string;
+  imageUrl2: string;
   description: string;
   woodType: string;
   isCustomOrder: boolean;
@@ -82,12 +89,13 @@ interface ParsedRow {
   warnings: string[];
 }
 
-function parseRows(text: string): ParsedRow[] {
+function parseRows(text: string, categories: DbCategory[]): ParsedRow[] {
   const table = parseCsv(text);
   if (table.length === 0) return [];
 
   const header = table[0].map((h) => COLUMN_ALIASES[h.trim().toLowerCase()] ?? "");
   const seenSlugs = new Set<string>();
+  const categoryByName = new Map(categories.map((c) => [c.name.toLowerCase(), c]));
 
   return table.slice(1).map((cells, i) => {
     const get = (key: string) => {
@@ -98,9 +106,11 @@ function parseRows(text: string): ParsedRow[] {
     const name = get("name");
     const priceRaw = get("price").replace(",", ".");
     const imageUrl = get("image_url");
+    const imageUrl2 = get("image_url_2");
     const slugInput = get("slug");
     const slug = slugInput || slugify(name);
-    const category = get("category") || CATEGORIES[0];
+    const categoryName = get("category");
+    const matchedCategory = categoryByName.get(categoryName.toLowerCase());
     const isCustomOrder = parseBoolean(get("is_custom_order"), false);
 
     const errors: string[] = [];
@@ -120,17 +130,23 @@ function parseRows(text: string): ParsedRow[] {
       errors.push(`Slug "${slug}" repetido neste mesmo arquivo.`);
     }
     if (slug) seenSlugs.add(slug);
-    if (!CATEGORIES.includes(category)) {
-      warnings.push(`Categoria "${category}" não está na lista padrão.`);
+    if (!categoryName) {
+      errors.push("Falta a categoria.");
+    } else if (!matchedCategory) {
+      errors.push(`Categoria "${categoryName}" não cadastrada. Crie-a em Categorias antes.`);
+    } else if (!matchedCategory.active) {
+      warnings.push(`Categoria "${categoryName}" está inativa.`);
     }
 
     return {
       row: i + 2, // +1 pelo cabeçalho, +1 porque a linha 1 é a primeira de dados.
       name,
       slug,
-      category,
+      categoryName,
+      categoryId: matchedCategory?.id ?? null,
       price: priceRaw || "0",
       imageUrl,
+      imageUrl2,
       description: get("description"),
       woodType: get("wood_type"),
       isCustomOrder,
@@ -149,10 +165,18 @@ export function BulkImportProductsDialog({
   onImported,
 }: BulkImportProductsDialogProps) {
   const [rows, setRows] = React.useState<ParsedRow[]>([]);
+  const [categories, setCategories] = React.useState<DbCategory[]>([]);
   const [fileName, setFileName] = React.useState("");
   const [importing, setImporting] = React.useState(false);
   const [result, setResult] = React.useState<BulkImportResult | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    if (!open) return;
+    listCategories()
+      .then(setCategories)
+      .catch(() => setCategories([]));
+  }, [open]);
 
   function reset() {
     setRows([]);
@@ -173,7 +197,7 @@ export function BulkImportProductsDialog({
     setResult(null);
     const reader = new FileReader();
     reader.onload = () => {
-      setRows(parseRows(String(reader.result ?? "")));
+      setRows(parseRows(String(reader.result ?? ""), categories));
     };
     reader.readAsText(file);
   }
@@ -198,9 +222,10 @@ export function BulkImportProductsDialog({
         input: {
           name: r.name,
           slug: r.slug,
-          category: r.category,
+          category_id: r.categoryId as string,
           price: Number(r.price) || 0,
           image_url: r.imageUrl,
+          image_url_2: r.imageUrl2 || null,
           description: r.description,
           wood_type: r.woodType || null,
           is_custom_order: r.isCustomOrder,
@@ -226,6 +251,10 @@ export function BulkImportProductsDialog({
 
         {!result && (
           <>
+            <p className="text-xs text-text-muted">
+              A coluna "categoria" precisa bater com o nome exato de uma
+              categoria já cadastrada em Categorias.
+            </p>
             <div className="flex flex-wrap items-center gap-3">
               <Button type="button" variant="outline" size="sm" onClick={downloadTemplate}>
                 <Download className="size-4" /> Baixar modelo CSV

@@ -91,6 +91,7 @@ export function AdminCustomerQuickView({
                   {customer.address_line1}
                   {customer.address_line2 ? `, ${customer.address_line2}` : ""}
                   <br />
+                  {customer.neighborhood ? `${customer.neighborhood} · ` : ""}
                   {customer.postal_code} {customer.city}
                   {customer.region ? `, ${customer.region}` : ""}
                   <br />

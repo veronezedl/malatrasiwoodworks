@@ -1,13 +1,13 @@
 import { supabase } from "@/lib/supabase";
-import type { DbProduct } from "@/types/database";
+import type { DbProduct, ProductWithCategory } from "@/types/database";
 
-export async function listProducts(): Promise<DbProduct[]> {
+export async function listProducts(): Promise<ProductWithCategory[]> {
   const { data, error } = await supabase
     .from("products")
-    .select("*")
+    .select("*, category:categories(name)")
     .order("created_at", { ascending: false });
   if (error) throw error;
-  return data ?? [];
+  return (data ?? []) as unknown as ProductWithCategory[];
 }
 
 export async function uploadProductImage(file: File): Promise<string> {

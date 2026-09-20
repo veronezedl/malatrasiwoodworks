@@ -226,6 +226,7 @@ export function BulkImportProductsDialog({
           price: Number(r.price) || 0,
           image_url: r.imageUrl,
           image_url_2: r.imageUrl2 || null,
+        price_tiers: [],
           description: r.description,
           wood_type: r.woodType || null,
           is_custom_order: r.isCustomOrder,

@@ -1,13 +1,28 @@
 import * as React from "react";
 import type { Product } from "@/data/products";
+import type { ComboWithItems, PriceTier } from "@/types/database";
+import { unitPriceForQty } from "@/lib/pricing";
 
 export interface CartItem {
   id: string;
+  // Chave da linha no carrinho: o slug do produto, ou "combo:<id>" para kits.
   slug: string;
+  // Ausente nos carrinhos salvos antes dos kits existirem = produto.
+  kind?: "product" | "combo";
   name: string;
+  // Preço base do produto (as faixas progressivas se aplicam sobre ele) ou o
+  // preço fechado do kit.
   price: number;
+  priceTiers?: PriceTier[];
+  components?: { name: string; quantity: number }[];
   image: string;
   quantity: number;
+}
+
+// Preço unitário efetivo da linha (já com a faixa progressiva atingida).
+export function cartItemUnitPrice(item: CartItem): number {
+  if (item.kind === "combo") return item.price;
+  return unitPriceForQty(item.price, item.priceTiers, item.quantity);
 }
 
 interface CartContextValue {
@@ -15,6 +30,8 @@ interface CartContextValue {
   itemCount: number;
   subtotal: number;
   addItem: (product: Product, quantity?: number) => boolean;
+  addCombo: (combo: ComboWithItems) => boolean;
+  syncPrices: (products: Product[], combos: ComboWithItems[]) => void;
   removeItem: (slug: string) => void;
   setQuantity: (slug: string, quantity: number) => void;
   clearCart: () => void;
@@ -57,6 +74,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           slug: product.slug,
           name: product.name,
           price: product.price,
+          priceTiers: product.priceTiers,
           image: product.images[0] ?? "",
           quantity,
         },
@@ -64,6 +82,64 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     });
     return true;
   }, []);
+
+  const addCombo = React.useCallback((combo: ComboWithItems): boolean => {
+    const key = `combo:${combo.id}`;
+    setItems((prev) => {
+      if (prev.some((i) => i.slug === key)) {
+        return prev.map((i) => (i.slug === key ? { ...i, quantity: i.quantity + 1 } : i));
+      }
+      return [
+        ...prev,
+        {
+          id: combo.id,
+          slug: key,
+          kind: "combo",
+          name: combo.name,
+          price: combo.price,
+          components: combo.items.map((ci) => ({
+            name: ci.product?.name ?? "Produto",
+            quantity: ci.quantity,
+          })),
+          image: combo.image_url ?? "",
+          quantity: 1,
+        },
+      ];
+    });
+    return true;
+  }, []);
+
+  // Atualiza preços/faixas dos itens do carrinho com o catálogo atual, para
+  // não mostrar um valor antigo guardado no localStorage.
+  const syncPrices = React.useCallback(
+    (products: Product[], combos: ComboWithItems[]) => {
+      setItems((prev) => {
+        let changed = false;
+        const next = prev.map((item) => {
+          if (item.kind === "combo") {
+            const combo = combos.find((c) => c.id === item.id);
+            if (combo && combo.price !== item.price) {
+              changed = true;
+              return { ...item, price: combo.price };
+            }
+            return item;
+          }
+          const product = products.find((p) => p.id === item.id);
+          if (
+            product &&
+            (product.price !== item.price ||
+              JSON.stringify(product.priceTiers) !== JSON.stringify(item.priceTiers ?? []))
+          ) {
+            changed = true;
+            return { ...item, price: product.price, priceTiers: product.priceTiers };
+          }
+          return item;
+        });
+        return changed ? next : prev;
+      });
+    },
+    [],
+  );
 
   const removeItem = React.useCallback((slug: string) => {
     setItems((prev) => prev.filter((i) => i.slug !== slug));
@@ -79,7 +155,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const clearCart = React.useCallback(() => setItems([]), []);
 
   const itemCount = items.reduce((sum, i) => sum + i.quantity, 0);
-  const subtotal = items.reduce((sum, i) => sum + i.quantity * i.price, 0);
+  const subtotal = items.reduce((sum, i) => sum + i.quantity * cartItemUnitPrice(i), 0);
 
   const value = React.useMemo(
     () => ({
@@ -87,11 +163,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       itemCount,
       subtotal,
       addItem,
+      addCombo,
+      syncPrices,
       removeItem,
       setQuantity,
       clearCart,
     }),
-    [items, itemCount, subtotal, addItem, removeItem, setQuantity, clearCart],
+    [items, itemCount, subtotal, addItem, addCombo, syncPrices, removeItem, setQuantity, clearCart],
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

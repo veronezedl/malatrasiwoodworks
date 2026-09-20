@@ -41,6 +41,9 @@ import { AdminShipping } from "@/pages/admin/AdminShipping";
 import { AdminPromotions } from "@/pages/admin/AdminPromotions";
 import { AdminQuotes } from "@/pages/admin/AdminQuotes";
 import { AdminHandleModels } from "@/pages/admin/AdminHandleModels";
+import { AdminAddons } from "@/pages/admin/AdminAddons";
+import { AdminCombos } from "@/pages/admin/AdminCombos";
+import { AdminBanners } from "@/pages/admin/AdminBanners";
 import { AdminGallery } from "@/pages/admin/AdminGallery";
 import { AdminUsers } from "@/pages/admin/AdminUsers";
 
@@ -92,6 +95,9 @@ function App() {
               <Route path="fotos-clientes" element={<AdminGallery />} />
               <Route path="orcamentos" element={<AdminQuotes />} />
               <Route path="modelos-de-alca" element={<AdminHandleModels />} />
+              <Route path="adicionais" element={<AdminAddons />} />
+              <Route path="kits" element={<AdminCombos />} />
+              <Route path="banners" element={<AdminBanners />} />
               <Route path="usuarios" element={<AdminUsers />} />
             </Route>
           </Routes>

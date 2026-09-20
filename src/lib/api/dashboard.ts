@@ -48,7 +48,12 @@ interface OrderRow {
   status: OrderStatus;
   total: number;
   created_at: string;
-  order_items: { product_id: string | null; product_name: string; quantity: number }[];
+  order_items: {
+    product_id: string | null;
+    combo_id: string | null;
+    product_name: string;
+    quantity: number;
+  }[];
   customer: { full_name: string; email: string } | null;
 }
 
@@ -88,7 +93,7 @@ export async function fetchDashboardData(
       supabase
         .from("orders")
         .select(
-          "id, customer_id, status, total, created_at, order_items(product_id, product_name, quantity), customer:customers(full_name, email)",
+          "id, customer_id, status, total, created_at, order_items(product_id, combo_id, product_name, quantity), customer:customers(full_name, email)",
         )
         .order("id")
         .range(from, to),
@@ -155,7 +160,9 @@ export async function fetchDashboardData(
   const qtyMap = new Map<string, { name: string; quantity: number }>();
   for (const o of countedOrders) {
     for (const item of o.order_items ?? []) {
-      const key = item.product_id ?? item.product_name;
+      // Linhas sem produto nem kit são adicionais do pedido, não itens vendidos.
+      if (!item.product_id && !item.combo_id) continue;
+      const key = item.product_id ?? item.combo_id!;
       const entry = qtyMap.get(key) ?? { name: item.product_name, quantity: 0 };
       entry.quantity += item.quantity;
       qtyMap.set(key, entry);

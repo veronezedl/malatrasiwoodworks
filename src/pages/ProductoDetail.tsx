@@ -1,3 +1,5 @@
+import { TierTable } from "@/components/TierPricing";
+import { unitPriceForQty } from "@/lib/pricing";
 import * as React from "react";
 import { useParams, Link, Navigate } from "react-router-dom";
 import { Hammer, ShieldCheck, Ruler, Minus, Plus } from "lucide-react";
@@ -38,6 +40,8 @@ export function ProductoDetail() {
       "Conheça este produto da Malatrasi WoodWorks, marcenaria artesanal em madeira maciça.",
   );
 
+  const unitPrice = product ? unitPriceForQty(product.price, product.priceTiers, quantity) : 0;
+
   if (loading) {
     return (
       <p className="py-24 text-center text-text-muted">Carregando produto...</p>
@@ -73,8 +77,26 @@ export function ProductoDetail() {
             {product.name}
           </h1>
           <p className="mt-4 font-heading text-2xl font-bold text-primary">
-            {product.isCustomOrder ? "Sob orçamento" : currency.format(product.price)}
+            {product.isCustomOrder ? (
+              "Sob orçamento"
+            ) : (
+              <>
+                {unitPrice < product.price && (
+                  <span className="mr-2 text-base font-normal text-text-muted line-through">
+                    {currency.format(product.price)}
+                  </span>
+                )}
+                {currency.format(unitPrice)}
+              </>
+            )}
           </p>
+          {!product.isCustomOrder && (
+            <TierTable
+              basePrice={product.price}
+              tiers={product.priceTiers}
+              quantity={quantity}
+            />
+          )}
           <p className="mt-4 text-text-muted">{product.description}</p>
 
           <div className="mt-5 flex flex-wrap gap-2 text-xs font-medium text-text-muted">

@@ -1,3 +1,5 @@
+import type { PriceTier } from "@/types/database";
+
 // Calculadora de orçamento sob medida (/orcamento). O valor é sempre uma
 // ESTIMATIVA — o admin confirma (ou ajusta) o preço final ao responder o
 // pedido de orçamento, então estes números não precisam ser perfeitos, só
@@ -58,4 +60,48 @@ export function calculateEstimate(input: EstimateInput): EstimateResult | null {
     areaM2: Math.round(areaM2 * 10000) / 10000,
     estimatedPrice: Math.round(price * 100) / 100,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Preço progressivo (faixas por produto). A mesma regra roda no servidor em
+// supabase/functions/_shared/orderPricing.ts — mantenha as duas iguais.
+// ---------------------------------------------------------------------------
+
+export function activeTier(
+  tiers: PriceTier[] | undefined,
+  qty: number,
+): PriceTier | null {
+  let best: PriceTier | null = null;
+  for (const tier of tiers ?? []) {
+    if (qty >= tier.min_qty && (!best || tier.min_qty > best.min_qty)) best = tier;
+  }
+  return best;
+}
+
+export function nextTier(
+  tiers: PriceTier[] | undefined,
+  qty: number,
+): PriceTier | null {
+  let next: PriceTier | null = null;
+  for (const tier of tiers ?? []) {
+    if (tier.min_qty > qty && (!next || tier.min_qty < next.min_qty)) next = tier;
+  }
+  return next;
+}
+
+export function unitPriceForQty(
+  basePrice: number,
+  tiers: PriceTier[] | undefined,
+  qty: number,
+): number {
+  const tier = activeTier(tiers, qty);
+  return Math.round((tier ? tier.unit_price : basePrice) * 100) / 100;
+}
+
+export function lowestTier(tiers: PriceTier[] | undefined): PriceTier | null {
+  let low: PriceTier | null = null;
+  for (const tier of tiers ?? []) {
+    if (!low || tier.unit_price < low.unit_price) low = tier;
+  }
+  return low;
 }

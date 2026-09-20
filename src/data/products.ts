@@ -5,12 +5,15 @@
 export const ALL_CATEGORIES_FILTER = "Todos";
 export type FilterCategory = string;
 
+import type { PriceTier } from "@/types/database";
+
 export interface Product {
   id: string;
   slug: string;
   name: string;
   category: string;
   price: number;
+  priceTiers: PriceTier[];
   images: string[];
   description: string;
   woodType: string | null;

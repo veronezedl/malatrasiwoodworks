@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase";
 import type { DbOrder, PaymentMethod } from "@/types/database";
+import { functionErrorMessage } from "@/lib/api/orders";
 
 export interface GuestCustomerInput {
   full_name: string;
@@ -20,7 +21,8 @@ export interface GuestCustomerInput {
 export interface GuestCheckoutInput {
   draftCustomerId: string | null;
   customer: GuestCustomerInput;
-  items: { product_id: string; quantity: number }[];
+  items: ({ product_id: string; quantity: number } | { combo_id: string; quantity: number })[];
+  addon_ids: string[];
   shipping_method_id: string;
   payment_method: PaymentMethod;
   engraving_text?: string | null;
@@ -37,21 +39,7 @@ export async function submitGuestOrder(
   const { data, error } = await supabase.functions.invoke("guest-checkout-order", {
     body: input,
   });
-  if (error) {
-    // O SDK não expõe a mensagem real da função em error.message (fica
-    // genérica) — o corpo real da resposta vive em error.context.
-    const context = (error as { context?: Response }).context;
-    let detailedMessage: string | null = null;
-    if (context) {
-      try {
-        const body = await context.clone().json();
-        detailedMessage = body?.error ?? null;
-      } catch {
-        // Se não for possível ler o context, cai na mensagem genérica abaixo.
-      }
-    }
-    throw new Error(detailedMessage ?? error.message);
-  }
+  if (error) throw new Error(await functionErrorMessage(error));
   if (!data?.order) {
     throw new Error(data?.error || "Não foi possível concluir o pedido.");
   }

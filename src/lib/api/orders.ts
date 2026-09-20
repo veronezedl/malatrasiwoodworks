@@ -1,6 +1,5 @@
 import { supabase } from "@/lib/supabase";
 import type {
-  DbCustomer,
   DbOrder,
   DbOrderItem,
   DbOrderStatusEvent,
@@ -42,58 +41,55 @@ export async function uploadEngravingImage(file: File): Promise<string> {
   return data.publicUrl;
 }
 
+// Linhas do pedido enviadas ao servidor (só ids e quantidades — o preço é
+// sempre recalculado lá).
+export function toOrderLines(items: CartItem[]) {
+  return items.map((item) =>
+    item.kind === "combo"
+      ? { combo_id: item.id, quantity: item.quantity }
+      : { product_id: item.id, quantity: item.quantity },
+  );
+}
+
+// O SDK não expõe a mensagem real da função em error.message (fica
+// genérica) — o corpo real da resposta vive em error.context.
+export async function functionErrorMessage(error: Error): Promise<string> {
+  const context = (error as { context?: Response }).context;
+  if (context) {
+    try {
+      const body = await context.clone().json();
+      if (body?.error) return body.error as string;
+    } catch {
+      // Cai na mensagem genérica abaixo.
+    }
+  }
+  return error.message;
+}
+
+// Cliente logado: o servidor (edge function create-order) recalcula preços,
+// faixas, kits, adicionais e frete a partir do banco e grava o pedido.
 export async function createOrder(
-  customer: DbCustomer,
   items: CartItem[],
+  addonIds: string[],
   paymentMethod: PaymentMethod,
   shippingMethod: DbShippingMethod,
   engraving?: EngravingInput,
 ): Promise<DbOrder> {
-  const subtotal = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
-  const total = subtotal + shippingMethod.price;
-
-  const { data: order, error: orderError } = await supabase
-    .from("orders")
-    .insert({
-      customer_id: customer.id,
-      status: "pending",
-      payment_method: paymentMethod,
-      subtotal,
+  const { data, error } = await supabase.functions.invoke("create-order", {
+    body: {
+      items: toOrderLines(items),
+      addon_ids: addonIds,
       shipping_method_id: shippingMethod.id,
-      shipping_method_name: shippingMethod.name,
-      shipping_cost: shippingMethod.price,
-      total,
-      shipping_full_name: customer.full_name,
-      shipping_phone: customer.phone,
-      shipping_address_line1: customer.address_line1,
-      shipping_address_line2: customer.address_line2,
-      shipping_address_number: customer.address_number,
-      shipping_neighborhood: customer.neighborhood,
-      shipping_postal_code: customer.postal_code,
-      shipping_city: customer.city,
-      shipping_region: customer.region,
-      shipping_country_code: customer.country_code,
+      payment_method: paymentMethod,
       engraving_text: engraving?.engravingText || null,
       engraving_image_url: engraving?.engravingImageUrl || null,
-    })
-    .select()
-    .single();
-  if (orderError || !order) throw orderError ?? new Error("Não foi possível criar o pedido.");
-
-  const { error: itemsError } = await supabase.from("order_items").insert(
-    items.map((item) => ({
-      order_id: order.id,
-      product_id: item.id,
-      product_name: item.name,
-      unit_price: item.price,
-      quantity: item.quantity,
-    })),
-  );
-  if (itemsError) throw itemsError;
-
-  await notifyOrderStatus(order.id, "pending", true);
-
-  return order as DbOrder;
+    },
+  });
+  if (error) throw new Error(await functionErrorMessage(error));
+  if (!data?.order) {
+    throw new Error(data?.error || "Não foi possível criar o pedido.");
+  }
+  return data.order as DbOrder;
 }
 
 export async function listOrders(): Promise<OrderWithCustomer[]> {

@@ -12,6 +12,7 @@
 //   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY  (injetadas automaticamente pelo Supabase)
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { priceOrder, PricingError, type OrderLineInput } from "../_shared/orderPricing.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -67,7 +68,8 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const draftCustomerId: string | null = body.draftCustomerId ?? null;
     const customerInput: CustomerInput | undefined = body.customer;
-    const items: { product_id: string; quantity: number }[] = body.items ?? [];
+    const items: OrderLineInput[] = body.items ?? [];
+    const addonIds: string[] = body.addon_ids ?? [];
     const shippingMethodId: string | undefined = body.shipping_method_id;
     const paymentMethod: string = body.payment_method;
     const engravingText: string | null = body.engraving_text || null;
@@ -75,13 +77,6 @@ Deno.serve(async (req) => {
 
     const customerError = validateCustomer(customerInput);
     if (customerError) return jsonError(customerError, 400);
-    if (!Array.isArray(items) || items.length === 0) {
-      return jsonError("O carrinho está vazio.", 400);
-    }
-    if (items.some((i) => !i.product_id || !Number.isInteger(i.quantity) || i.quantity < 1)) {
-      return jsonError("Há itens inválidos no carrinho.", 400);
-    }
-    if (!shippingMethodId) return jsonError("Escolha um método de entrega.", 400);
     if (!VALID_PAYMENT_METHODS.includes(paymentMethod)) {
       return jsonError("Forma de pagamento inválida.", 400);
     }
@@ -91,37 +86,13 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    // Recalcula tudo a partir do servidor — nunca confia em preços do cliente.
-    const productIds = [...new Set(items.map((i) => i.product_id))];
-    const { data: products, error: productsError } = await supabase
-      .from("products")
-      .select("id, name, price, active")
-      .in("id", productIds);
-    if (productsError) throw productsError;
-
-    const productMap = new Map((products ?? []).map((p) => [p.id, p]));
-    for (const item of items) {
-      const product = productMap.get(item.product_id);
-      if (!product || !product.active) {
-        return jsonError("Algum produto do seu carrinho não está mais disponível.", 400);
-      }
-    }
-
-    const { data: shippingMethod, error: shippingError } = await supabase
-      .from("shipping_methods")
-      .select("id, name, price, active")
-      .eq("id", shippingMethodId)
-      .maybeSingle();
-    if (shippingError) throw shippingError;
-    if (!shippingMethod || !shippingMethod.active) {
-      return jsonError("Escolha um método de entrega válido.", 400);
-    }
-
-    const subtotal = items.reduce((sum, item) => {
-      const product = productMap.get(item.product_id)!;
-      return sum + product.price * item.quantity;
-    }, 0);
-    const total = subtotal + shippingMethod.price;
+    // Recalcula tudo a partir do servidor (faixas, kits, adicionais e frete) —
+    // nunca confia em preços do cliente.
+    const priced = await priceOrder(supabase, {
+      items,
+      addonIds,
+      shippingMethodId,
+    });
 
     const customerFields = {
       full_name: customerInput!.full_name,
@@ -167,11 +138,11 @@ Deno.serve(async (req) => {
         customer_id: customer.id,
         status: "pending",
         payment_method: paymentMethod,
-        subtotal,
-        shipping_method_id: shippingMethod.id,
-        shipping_method_name: shippingMethod.name,
-        shipping_cost: shippingMethod.price,
-        total,
+        subtotal: priced.subtotal,
+        shipping_method_id: priced.shipping.id,
+        shipping_method_name: priced.shipping.name,
+        shipping_cost: priced.shipping.price,
+        total: priced.total,
         shipping_full_name: customerFields.full_name,
         shipping_phone: customerFields.phone,
         shipping_address_line1: customerFields.address_line1,
@@ -190,16 +161,7 @@ Deno.serve(async (req) => {
     if (orderError || !order) throw orderError ?? new Error("Não foi possível criar o pedido.");
 
     const { error: itemsError } = await supabase.from("order_items").insert(
-      items.map((item) => {
-        const product = productMap.get(item.product_id)!;
-        return {
-          order_id: order.id,
-          product_id: item.product_id,
-          product_name: product.name,
-          unit_price: product.price,
-          quantity: item.quantity,
-        };
-      }),
+      priced.lines.map((line) => ({ order_id: order.id, ...line })),
     );
     if (itemsError) throw itemsError;
 
@@ -219,6 +181,7 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
+    if (err instanceof PricingError) return jsonError(err.message, 400);
     return new Response(
       JSON.stringify({ error: err instanceof Error ? err.message : "Erro desconhecido" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },

@@ -78,6 +78,11 @@ export interface DbCustomer {
   updated_at: string;
 }
 
+export interface PriceTier {
+  min_qty: number;
+  unit_price: number;
+}
+
 export interface DbProduct {
   id: string;
   slug: string;
@@ -86,6 +91,7 @@ export interface DbProduct {
   price: number;
   image_url: string;
   image_url_2: string | null;
+  price_tiers: PriceTier[];
   description: string;
   wood_type: string | null;
   is_custom_order: boolean;
@@ -144,6 +150,7 @@ export interface DbOrderItem {
   id: string;
   order_id: string;
   product_id: string | null;
+  combo_id: string | null;
   product_name: string;
   unit_price: number;
   quantity: number;
@@ -276,6 +283,48 @@ export interface DbGalleryPhoto {
   id: string;
   image_url: string;
   caption: string | null;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DbAddon {
+  id: string;
+  name: string;
+  price: number;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DbCombo {
+  id: string;
+  name: string;
+  description: string;
+  image_url: string | null;
+  price: number;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DbComboItem {
+  id: string;
+  combo_id: string;
+  product_id: string;
+  quantity: number;
+}
+
+export interface ComboWithItems extends DbCombo {
+  items: (DbComboItem & {
+    product: { name: string; price: number } | null;
+  })[];
+}
+
+export interface DbHeroBanner {
+  id: string;
+  image_url: string;
+  sort_order: number;
   active: boolean;
   created_at: string;
   updated_at: string;

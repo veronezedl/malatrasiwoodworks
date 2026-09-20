@@ -11,6 +11,7 @@ function toProduct(row: ProductWithCategory): Product {
     name: row.name,
     category: row.category?.name ?? "Sem categoria",
     price: row.price,
+    priceTiers: row.price_tiers ?? [],
     images: [row.image_url, row.image_url_2].filter(
       (url): url is string => !!url,
     ),

@@ -1,9 +1,9 @@
 import * as React from "react";
-import { ImagePlus } from "lucide-react";
+import { ImagePlus, Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { createProduct, updateProduct, uploadProductImage } from "@/lib/api/products";
 import { listCategories } from "@/lib/api/categories";
-import type { DbCategory, DbProduct } from "@/types/database";
+import type { DbCategory, DbProduct, PriceTier } from "@/types/database";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +27,7 @@ export function ProductForm({ productId, onSaved }: ProductFormProps) {
   const [categories, setCategories] = React.useState<DbCategory[]>([]);
   const [categoryId, setCategoryId] = React.useState("");
   const [price, setPrice] = React.useState("");
+  const [tiers, setTiers] = React.useState<{ min_qty: string; unit_price: string }[]>([]);
   const [imageUrl, setImageUrl] = React.useState("");
   const [imageUrl2, setImageUrl2] = React.useState("");
   const [description, setDescription] = React.useState("");
@@ -67,6 +68,12 @@ export function ProductForm({ productId, onSaved }: ProductFormProps) {
           setPrice(String(product.price));
           setImageUrl(product.image_url);
           setImageUrl2(product.image_url_2 ?? "");
+          setTiers(
+            (product.price_tiers ?? []).map((t) => ({
+              min_qty: String(t.min_qty),
+              unit_price: String(t.unit_price),
+            })),
+          );
           setDescription(product.description);
           setWoodType(product.wood_type ?? "");
           setIsCustomOrder(product.is_custom_order);
@@ -78,8 +85,39 @@ export function ProductForm({ productId, onSaved }: ProductFormProps) {
       });
   }, [productId, isNew]);
 
+  function parseTiers(basePrice: number): PriceTier[] | string {
+    const parsed: PriceTier[] = [];
+    for (const row of tiers) {
+      if (!row.min_qty.trim() && !row.unit_price.trim()) continue;
+      const min_qty = Number(row.min_qty);
+      const unit_price = Number(row.unit_price);
+      if (!Number.isInteger(min_qty) || min_qty < 2) {
+        return "Nas faixas de preço, a quantidade mínima deve ser um número inteiro a partir de 2.";
+      }
+      if (!(unit_price > 0) || unit_price >= basePrice) {
+        return "Nas faixas de preço, o preço unitário deve ser menor que o preço do produto.";
+      }
+      parsed.push({ min_qty, unit_price: Math.round(unit_price * 100) / 100 });
+    }
+    parsed.sort((a, b) => a.min_qty - b.min_qty);
+    for (let i = 1; i < parsed.length; i++) {
+      if (parsed[i].min_qty === parsed[i - 1].min_qty) {
+        return "Há duas faixas de preço com a mesma quantidade mínima.";
+      }
+      if (parsed[i].unit_price >= parsed[i - 1].unit_price) {
+        return "Quanto maior a quantidade, menor deve ser o preço unitário da faixa.";
+      }
+    }
+    return parsed;
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const priceTiers = parseTiers(Number(price) || 0);
+    if (typeof priceTiers === "string") {
+      showToast("Confira as faixas de preço", priceTiers);
+      return;
+    }
     setSaving(true);
     try {
       const input = {
@@ -89,6 +127,7 @@ export function ProductForm({ productId, onSaved }: ProductFormProps) {
         price: Number(price) || 0,
         image_url: imageUrl,
         image_url_2: imageUrl2 || null,
+        price_tiers: priceTiers,
         description,
         wood_type: woodType || null,
         is_custom_order: isCustomOrder,
@@ -204,6 +243,73 @@ export function ProductForm({ productId, onSaved }: ProductFormProps) {
             required
           />
         </div>
+      </div>
+      <div className="space-y-2 rounded-brand border border-black/10 p-3">
+        <div>
+          <p className="text-sm font-medium text-text">
+            Preço progressivo (opcional)
+          </p>
+          <p className="text-xs text-text-muted">
+            Preço unitário menor a partir de certa quantidade. Ex.: a partir de
+            5 unidades, R$ 62,00 cada. Abaixo da primeira faixa vale o preço
+            do produto.
+          </p>
+        </div>
+        {tiers.map((tier, index) => (
+          <div key={index} className="flex items-end gap-2">
+            <div className="flex-1 space-y-1">
+              <Label htmlFor={`tier-qty-${index}`} className="text-xs">
+                A partir de (un.)
+              </Label>
+              <Input
+                id={`tier-qty-${index}`}
+                type="number"
+                min="2"
+                step="1"
+                value={tier.min_qty}
+                onChange={(e) =>
+                  setTiers((prev) =>
+                    prev.map((t, i) => (i === index ? { ...t, min_qty: e.target.value } : t)),
+                  )
+                }
+              />
+            </div>
+            <div className="flex-1 space-y-1">
+              <Label htmlFor={`tier-price-${index}`} className="text-xs">
+                Preço unitário (R$)
+              </Label>
+              <Input
+                id={`tier-price-${index}`}
+                type="number"
+                min="0"
+                step="0.01"
+                value={tier.unit_price}
+                onChange={(e) =>
+                  setTiers((prev) =>
+                    prev.map((t, i) => (i === index ? { ...t, unit_price: e.target.value } : t)),
+                  )
+                }
+              />
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label="Remover faixa"
+              onClick={() => setTiers((prev) => prev.filter((_, i) => i !== index))}
+            >
+              <Trash2 className="size-4" />
+            </Button>
+          </div>
+        ))}
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setTiers((prev) => [...prev, { min_qty: "", unit_price: "" }])}
+        >
+          <Plus /> Adicionar faixa
+        </Button>
       </div>
       <div className="space-y-1.5">
         <Label htmlFor="p-image">Imagem 1 do produto</Label>

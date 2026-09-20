@@ -1,12 +1,17 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import logoFullUrl from "@/assets/logo-full.png";
+import { HeroBanner } from "@/components/HeroBanner";
+import { useHeroBanners } from "@/hooks/use-hero-banners";
 
 export function Hero() {
+  const banners = useHeroBanners();
+
   return (
     <section className="relative overflow-hidden bg-primary">
       <div className="absolute inset-0 bg-gradient-to-r from-primary via-primary/85 to-primary/40" />
-      <div className="relative mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-28">
+      <div className="relative mx-auto grid max-w-7xl gap-12 px-4 py-20 sm:px-6 sm:py-28 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:items-center">
+        <div>
         <img
           src={logoFullUrl}
           alt=""
@@ -46,6 +51,12 @@ export function Hero() {
           </a>
           <span>Bauru · SP · Brasil</span>
         </div>
+        </div>
+
+        <HeroBanner
+          banners={banners}
+          className="aspect-[4/3] w-full lg:aspect-[4/5] lg:max-h-[34rem] lg:justify-self-end"
+        />
       </div>
     </section>
   );

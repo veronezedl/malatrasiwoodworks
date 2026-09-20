@@ -14,6 +14,9 @@ import {
   GripHorizontal,
   Tags,
   Images,
+  PackagePlus,
+  Boxes,
+  LayoutTemplate,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/lib/supabase";
@@ -33,11 +36,14 @@ const NAV = [
   { to: "/admin/pedidos", label: "Pedidos", icon: ShoppingBag, end: false },
   { to: "/admin/produtos", label: "Produtos", icon: Package, end: false },
   { to: "/admin/categorias", label: "Categorias", icon: Tags, end: false },
+  { to: "/admin/kits", label: "Kits e Combos", icon: Boxes, end: false },
+  { to: "/admin/adicionais", label: "Adicionais", icon: PackagePlus, end: false },
   { to: "/admin/clientes", label: "Clientes", icon: Users, end: false },
   { to: "/admin/orcamentos", label: "Orçamentos", icon: Ruler, end: false },
   { to: "/admin/modelos-de-alca", label: "Modelos de Alça", icon: GripHorizontal, end: false },
   { to: "/admin/entregas", label: "Entregas", icon: Truck, end: false },
   { to: "/admin/promocoes", label: "Promoção", icon: Megaphone, end: false },
+  { to: "/admin/banners", label: "Banners da Home", icon: LayoutTemplate, end: false },
   { to: "/admin/fotos-clientes", label: "Fotos de Clientes", icon: Images, end: false },
   { to: "/admin/usuarios", label: "Usuários", icon: UserCog, end: false },
 ];

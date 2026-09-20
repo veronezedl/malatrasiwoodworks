@@ -8,6 +8,7 @@ import { BenefitCards } from "@/components/TrustBadges";
 import { CategoryFilter } from "@/components/CategoryFilter";
 import { ProductGrid } from "@/components/ProductGrid";
 import { ReviewsSection } from "@/components/ReviewsSection";
+import { CombosSection } from "@/components/CombosSection";
 import { CustomerGallerySection } from "@/components/CustomerGallerySection";
 import { AboutSection } from "@/components/AboutSection";
 import { ContactSection } from "@/components/ContactSection";
@@ -72,6 +73,9 @@ export function Home() {
         </Reveal>
       </section>
 
+      <Reveal>
+        <CombosSection />
+      </Reveal>
       <Reveal>
         <ReviewsSection />
       </Reveal>

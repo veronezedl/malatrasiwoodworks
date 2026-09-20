@@ -1,3 +1,4 @@
+import { TierBadge } from "@/components/TierPricing";
 import { Link } from "react-router-dom";
 import { Hammer, Ruler } from "lucide-react";
 import type { Product } from "@/data/products";
@@ -55,6 +56,7 @@ export function ProductQuickViewDialog({
             <p className="mt-1 font-heading text-lg font-bold text-primary">
               {product.isCustomOrder ? "Sob orçamento" : currency.format(product.price)}
             </p>
+            {!product.isCustomOrder && <TierBadge tiers={product.priceTiers} className="mt-1" />}
             <div className="mt-2 flex flex-wrap gap-1.5 text-xs font-medium text-text-muted">
               <span className="flex items-center gap-1 rounded-full bg-bg-muted px-2 py-0.5">
                 <Hammer className="size-3" /> Feito à mão

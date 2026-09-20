@@ -7,6 +7,7 @@ import { useCart } from "@/hooks/use-cart";
 import { useToast } from "@/hooks/use-toast";
 import { ProductQuickViewDialog } from "@/components/ProductQuickViewDialog";
 import { ProductImageCarousel } from "@/components/ProductImageCarousel";
+import { TierBadge } from "@/components/TierPricing";
 
 const currency = new Intl.NumberFormat("pt-BR", {
   style: "currency",
@@ -55,6 +56,7 @@ export function ProductCard({ product }: { product: Product }) {
         <p className="font-heading text-base font-bold text-primary sm:text-lg">
           {product.isCustomOrder ? "Sob orçamento" : currency.format(product.price)}
         </p>
+        {!product.isCustomOrder && <TierBadge tiers={product.priceTiers} className="self-start" />}
 
         <div className="flex flex-wrap gap-1.5 text-[10px] font-medium text-text-muted sm:gap-2 sm:text-[11px]">
           <span className="flex items-center gap-1 rounded-full bg-bg-muted px-1.5 py-0.5 sm:px-2 sm:py-1">

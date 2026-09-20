@@ -8,22 +8,28 @@ import {
   ChevronDown,
   CheckCircle2,
   PenLine,
+  Check,
+  PackagePlus,
 } from "lucide-react";
-import { useCart, type CartItem } from "@/hooks/use-cart";
+import { useCart, cartItemUnitPrice, type CartItem } from "@/hooks/use-cart";
+import { activeTier, nextTier } from "@/lib/pricing";
 import { useSeo } from "@/hooks/use-seo";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
-import { fetchProductBySlug } from "@/lib/api/catalog";
+import { fetchActiveProducts, fetchProductBySlug } from "@/lib/api/catalog";
+import { listActiveAddons } from "@/lib/api/addons";
+import { listActiveCombos } from "@/lib/api/combos";
 import {
   createMercadoPagoPreference,
   createOrder,
+  toOrderLines,
   uploadEngravingImage,
 } from "@/lib/api/orders";
 import { listActiveShippingMethods } from "@/lib/api/shipping";
 import { submitGuestOrder, type GuestCustomerInput } from "@/lib/api/guestCheckout";
 import {
-  type DbCustomer,
+  type DbAddon,
   type DbOrder,
   type DbShippingMethod,
   type PaymentMethod,
@@ -62,7 +68,8 @@ export function Carrito() {
     "Seu carrinho · Malatrasi WoodWorks",
     "Revise os produtos do seu carrinho antes de finalizar sua compra na Malatrasi WoodWorks.",
   );
-  const { items, subtotal, addItem, setQuantity, removeItem, clearCart } = useCart();
+  const { items, subtotal, addItem, syncPrices, setQuantity, removeItem, clearCart } =
+    useCart();
   const { session } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
@@ -71,6 +78,8 @@ export function Carrito() {
   const [shippingMethods, setShippingMethods] = React.useState<DbShippingMethod[]>([]);
   const [shippingMethodId, setShippingMethodId] = React.useState<string | null>(null);
   const [loadingShipping, setLoadingShipping] = React.useState(true);
+  const [addons, setAddons] = React.useState<DbAddon[]>([]);
+  const [selectedAddonIds, setSelectedAddonIds] = React.useState<string[]>([]);
   const [successOrder, setSuccessOrder] = React.useState<DbOrder | null>(null);
   const [mobileSummaryOpen, setMobileSummaryOpen] = React.useState(false);
   const [loginDialogOpen, setLoginDialogOpen] = React.useState(false);
@@ -136,9 +145,28 @@ export function Carrito() {
       .finally(() => setLoadingShipping(false));
   }, []);
 
+  React.useEffect(() => {
+    listActiveAddons()
+      .then(setAddons)
+      .catch(() => {
+        // Best-effort: sem adicionais carregados, o bloco simplesmente não aparece.
+      });
+  }, []);
+
+  // Atualiza preços/faixas dos itens salvos no carrinho com o catálogo atual.
+  React.useEffect(() => {
+    Promise.all([fetchActiveProducts(), listActiveCombos()])
+      .then(([products, combos]) => syncPrices(products, combos))
+      .catch(() => {
+        // Best-effort: o servidor recalcula tudo de qualquer forma ao finalizar.
+      });
+  }, [syncPrices]);
+
+  const selectedAddons = addons.filter((a) => selectedAddonIds.includes(a.id));
+  const addonsTotal = selectedAddons.reduce((sum, a) => sum + a.price, 0);
   const selectedShipping = shippingMethods.find((m) => m.id === shippingMethodId) ?? null;
   const shippingCost = selectedShipping?.price ?? 0;
-  const total = subtotal + shippingCost;
+  const total = subtotal + addonsTotal + shippingCost;
 
   // Depois de criar o pedido: se for Mercado Pago, tira o cliente do site e
   // manda pra página de pagamento; senão, mostra o dialog de confirmação
@@ -191,7 +219,7 @@ export function Carrito() {
     try {
       const { data: customer, error } = await supabase
         .from("customers")
-        .select("*")
+        .select("id")
         .eq("auth_user_id", session.user.id)
         .maybeSingle();
       if (error) throw error;
@@ -211,8 +239,8 @@ export function Carrito() {
         : null;
 
       const order = await createOrder(
-        customer as DbCustomer,
         items,
+        selectedAddons.map((a) => a.id),
         PAYMENT_METHOD,
         selectedShipping,
         { engravingText: engravingText || null, engravingImageUrl },
@@ -248,7 +276,8 @@ export function Carrito() {
     const { order } = await submitGuestOrder({
       draftCustomerId,
       customer,
-      items: items.map((item) => ({ product_id: item.id, quantity: item.quantity })),
+      items: toOrderLines(items),
+      addon_ids: selectedAddons.map((a) => a.id),
       shipping_method_id: selectedShipping.id,
       payment_method: PAYMENT_METHOD,
       engraving_text: engravingText || null,
@@ -397,11 +426,116 @@ export function Carrito() {
         )}
       </div>
 
+      {addons.length > 0 && (
+        <div className="mb-5">
+          <p className="text-xs font-semibold uppercase tracking-wide text-text-muted">
+            Adicionais (opcional)
+          </p>
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="mt-2 flex w-full items-center justify-between gap-3 rounded-brand border border-black/10 bg-white px-3 py-2.5 text-left text-sm transition-colors hover:border-black/20 data-[state=open]:border-accent"
+              >
+                <span className="flex min-w-0 items-center gap-2">
+                  <PackagePlus className="size-4 shrink-0 text-accent" />
+                  <span className="truncate font-medium text-text">
+                    {selectedAddons.length === 0
+                      ? "Escolha os adicionais"
+                      : selectedAddons.length === 1
+                        ? selectedAddons[0].name
+                        : `${selectedAddons.length} adicionais selecionados`}
+                  </span>
+                </span>
+                <span className="flex shrink-0 items-center gap-2">
+                  {addonsTotal > 0 && (
+                    <span className="font-semibold text-accent">
+                      + {currency.format(addonsTotal)}
+                    </span>
+                  )}
+                  <ChevronDown className="size-4 text-text-muted" />
+                </span>
+              </button>
+            </PopoverTrigger>
+
+            <PopoverContent>
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <p className="font-heading text-sm font-semibold text-primary">
+                  Escolha os adicionais
+                </p>
+                <PopoverClose
+                  aria-label="Fechar"
+                  className="rounded-full p-1 text-text-muted transition-colors hover:bg-bg-muted"
+                >
+                  <X className="size-4" />
+                </PopoverClose>
+              </div>
+              <div className="space-y-2">
+                {addons.map((addon) => {
+                  const selected = selectedAddonIds.includes(addon.id);
+                  return (
+                    <button
+                      key={addon.id}
+                      type="button"
+                      role="checkbox"
+                      aria-checked={selected}
+                      onClick={() =>
+                        setSelectedAddonIds((prev) =>
+                          prev.includes(addon.id)
+                            ? prev.filter((id) => id !== addon.id)
+                            : [...prev, addon.id],
+                        )
+                      }
+                      className={`flex w-full items-center justify-between gap-3 rounded-brand border px-3 py-2.5 text-left text-sm transition-colors ${
+                        selected
+                          ? "border-accent bg-accent/10"
+                          : "border-black/10 bg-white hover:border-black/20"
+                      }`}
+                    >
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span
+                          className={`flex size-4 shrink-0 items-center justify-center rounded border ${
+                            selected
+                              ? "border-accent bg-accent text-white"
+                              : "border-black/20"
+                          }`}
+                        >
+                          {selected && <Check className="size-3" />}
+                        </span>
+                        <span
+                          className={`truncate font-medium ${selected ? "text-accent" : "text-text"}`}
+                        >
+                          {addon.name}
+                        </span>
+                      </span>
+                      <span className="shrink-0 font-semibold text-accent">
+                        {addon.price === 0 ? "Grátis" : `+ ${currency.format(addon.price)}`}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <PopoverClose asChild>
+                <Button type="button" size="sm" className="mt-3 w-full">
+                  Concluir
+                </Button>
+              </PopoverClose>
+            </PopoverContent>
+          </Popover>
+        </div>
+      )}
+
       <div className="space-y-1.5 border-t border-black/10 pt-4 text-sm text-text-muted">
         <div className="flex items-center justify-between gap-2">
           <span>Subtotal</span>
           <span>{currency.format(subtotal)}</span>
         </div>
+        {selectedAddons.map((addon) => (
+          <div key={addon.id} className="flex items-center justify-between gap-2">
+            <span className="truncate">{addon.name}</span>
+            <span className="shrink-0 text-accent">+ {currency.format(addon.price)}</span>
+          </div>
+        ))}
         <div className="flex items-center justify-between gap-2">
           <span className="truncate">
             Entrega{selectedShipping ? ` (${selectedShipping.name})` : ""}
@@ -441,7 +575,12 @@ export function Carrito() {
       <div className="mt-8 lg:grid lg:grid-cols-[1fr_22rem] lg:items-start lg:gap-10">
         <div className="space-y-8">
         <div className="divide-y divide-black/10 border-y border-black/10">
-          {items.map((item: CartItem) => (
+          {items.map((item: CartItem) => {
+            const isCombo = item.kind === "combo";
+            const unit = cartItemUnitPrice(item);
+            const tier = isCombo ? null : activeTier(item.priceTiers, item.quantity);
+            const upcoming = isCombo ? null : nextTier(item.priceTiers, item.quantity);
+            return (
             <div key={item.slug} className="flex flex-wrap items-center gap-4 py-5">
               <img
                 src={item.image}
@@ -449,15 +588,43 @@ export function Carrito() {
                 className="size-20 shrink-0 rounded-brand object-cover"
               />
               <div className="min-w-0 flex-1">
-                <Link
-                  to={`/produto/${item.slug}`}
-                  className="font-heading text-sm font-semibold text-primary hover:text-accent"
-                >
-                  {item.name}
-                </Link>
+                {isCombo ? (
+                  <span className="font-heading text-sm font-semibold text-primary">
+                    Kit: {item.name}
+                  </span>
+                ) : (
+                  <Link
+                    to={`/produto/${item.slug}`}
+                    className="font-heading text-sm font-semibold text-primary hover:text-accent"
+                  >
+                    {item.name}
+                  </Link>
+                )}
+                {isCombo && item.components && (
+                  <p className="mt-0.5 text-xs text-text-muted">
+                    {item.components.map((c) => `${c.quantity}x ${c.name}`).join(" · ")}
+                  </p>
+                )}
                 <p className="mt-1 text-sm text-text-muted">
-                  {currency.format(item.price)}
+                  {tier && (
+                    <span className="mr-1.5 line-through">{currency.format(item.price)}</span>
+                  )}
+                  <span className={tier ? "font-semibold text-accent" : ""}>
+                    {currency.format(unit)}
+                  </span>
+                  {isCombo ? " o kit" : " cada"}
                 </p>
+                {tier && (
+                  <span className="mt-1 inline-block rounded-full bg-accent/10 px-2 py-0.5 text-[11px] font-semibold text-accent">
+                    Preço progressivo · a partir de {tier.min_qty} un.
+                  </span>
+                )}
+                {upcoming && (
+                  <p className="mt-1 text-xs font-medium text-accent">
+                    Leve +{upcoming.min_qty - item.quantity} e pague{" "}
+                    {currency.format(upcoming.unit_price)} cada
+                  </p>
+                )}
               </div>
 
               <div className="flex basis-full items-center justify-between gap-4 sm:basis-auto sm:justify-end">
@@ -484,7 +651,7 @@ export function Carrito() {
                 </div>
 
                 <p className="w-20 text-right font-heading text-sm font-bold text-primary">
-                  {currency.format(item.price * item.quantity)}
+                  {currency.format(unit * item.quantity)}
                 </p>
 
                 <button
@@ -497,7 +664,8 @@ export function Carrito() {
                 </button>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className="rounded-brand border border-black/10 bg-white p-5">

@@ -1,9 +1,10 @@
 import * as React from "react";
-import { Pencil, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Pencil, Trash2 } from "lucide-react";
 import {
   createCategory,
   deleteCategory,
   listCategories,
+  swapCategoryOrder,
   updateCategory,
 } from "@/lib/api/categories";
 import type { DbCategory } from "@/types/database";
@@ -125,6 +126,7 @@ export function AdminCategories() {
   const [form, setForm] = React.useState<CategoryFormState>(emptyForm);
   const [saving, setSaving] = React.useState(false);
   const [editingCategory, setEditingCategory] = React.useState<DbCategory | null>(null);
+  const [movingId, setMovingId] = React.useState<string | null>(null);
 
   const load = React.useCallback(async () => {
     setLoading(true);
@@ -174,12 +176,38 @@ export function AdminCategories() {
     );
   }
 
+  // Troca a posição com a vizinha na lista (que já vem ordenada por
+  // sort_order) — essa ordem vale tanto para os Destaques da home quanto
+  // para o catálogo completo, nos filtros e no agrupamento de produtos.
+  async function move(index: number, direction: -1 | 1) {
+    const a = categories[index];
+    const b = categories[index + direction];
+    if (!a || !b) return;
+    setMovingId(a.id);
+    try {
+      await swapCategoryOrder(a, b);
+      setCategories((prev) => {
+        const next = [...prev];
+        // Troca as duas posições no array e os valores de sort_order entre
+        // elas, espelhando exatamente o swap feito no servidor.
+        next[index] = { ...b, sort_order: a.sort_order };
+        next[index + direction] = { ...a, sort_order: b.sort_order };
+        return next;
+      });
+    } catch (err) {
+      showToast("Não foi possível reordenar", err instanceof Error ? err.message : undefined);
+    } finally {
+      setMovingId(null);
+    }
+  }
+
   return (
     <div>
       <h1 className="font-heading text-2xl font-bold text-primary">Categorias</h1>
       <p className="mt-1 text-sm text-text-muted">
         Categorias de produto usadas no catálogo, nos filtros e nos
-        agrupamentos da loja.
+        agrupamentos da loja. Use as setas para definir a sequência — ela vale
+        tanto para os Destaques da home quanto para o catálogo completo.
       </p>
 
       <form
@@ -211,7 +239,7 @@ export function AdminCategories() {
         <>
           {/* Mobile: cards */}
           <div className="mt-6 space-y-3 md:hidden">
-            {categories.map((category) => (
+            {categories.map((category, index) => (
               <div
                 key={category.id}
                 className="rounded-brand border border-black/10 bg-white p-4"
@@ -224,21 +252,43 @@ export function AdminCategories() {
                     </Badge>
                   </button>
                 </div>
-                <div className="mt-3 flex items-center justify-end gap-3">
-                  <button
-                    onClick={() => setEditingCategory(category)}
-                    className="text-text-muted hover:text-primary"
-                    aria-label={`Editar ${category.name}`}
-                  >
-                    <Pencil className="size-4" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(category)}
-                    className="text-text-muted hover:text-accent"
-                    aria-label={`Excluir ${category.name}`}
-                  >
-                    <Trash2 className="size-4" />
-                  </button>
+                <div className="mt-3 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-1 text-text-muted">
+                    <button
+                      type="button"
+                      onClick={() => move(index, -1)}
+                      disabled={index === 0 || movingId !== null}
+                      className="flex size-8 items-center justify-center rounded hover:bg-bg-muted hover:text-primary disabled:opacity-30"
+                      aria-label={`Mover ${category.name} para cima`}
+                    >
+                      <ArrowUp className="size-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => move(index, 1)}
+                      disabled={index === categories.length - 1 || movingId !== null}
+                      className="flex size-8 items-center justify-center rounded hover:bg-bg-muted hover:text-primary disabled:opacity-30"
+                      aria-label={`Mover ${category.name} para baixo`}
+                    >
+                      <ArrowDown className="size-4" />
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setEditingCategory(category)}
+                      className="text-text-muted hover:text-primary"
+                      aria-label={`Editar ${category.name}`}
+                    >
+                      <Pencil className="size-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(category)}
+                      className="text-text-muted hover:text-accent"
+                      aria-label={`Excluir ${category.name}`}
+                    >
+                      <Trash2 className="size-4" />
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -249,14 +299,37 @@ export function AdminCategories() {
             <table className="w-full min-w-[420px] text-left text-sm">
               <thead>
                 <tr className="border-b border-black/10 text-xs uppercase tracking-wide text-text-muted">
+                  <th className="px-4 py-3 font-medium">Ordem</th>
                   <th className="px-4 py-3 font-medium">Categoria</th>
                   <th className="px-4 py-3 font-medium">Status</th>
                   <th className="px-4 py-3 font-medium">Ações</th>
                 </tr>
               </thead>
               <tbody>
-                {categories.map((category) => (
+                {categories.map((category, index) => (
                   <tr key={category.id} className="border-b border-black/5 last:border-0">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1 text-text-muted">
+                        <button
+                          type="button"
+                          onClick={() => move(index, -1)}
+                          disabled={index === 0 || movingId !== null}
+                          className="flex size-8 items-center justify-center rounded hover:bg-bg-muted hover:text-primary disabled:opacity-30"
+                          aria-label={`Mover ${category.name} para cima`}
+                        >
+                          <ArrowUp className="size-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => move(index, 1)}
+                          disabled={index === categories.length - 1 || movingId !== null}
+                          className="flex size-8 items-center justify-center rounded hover:bg-bg-muted hover:text-primary disabled:opacity-30"
+                          aria-label={`Mover ${category.name} para baixo`}
+                        >
+                          <ArrowDown className="size-4" />
+                        </button>
+                      </div>
+                    </td>
                     <td className="px-4 py-3 font-medium text-text">{category.name}</td>
                     <td className="px-4 py-3">
                       <button type="button" onClick={() => toggleActive(category)}>

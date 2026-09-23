@@ -110,13 +110,16 @@ export interface DbProduct {
 export interface DbCategory {
   id: string;
   name: string;
+  // Ordem manual (menor = aparece antes) nos filtros e agrupamentos da home
+  // e do catálogo; ver AdminCategories.
+  sort_order: number;
   active: boolean;
   created_at: string;
   updated_at: string;
 }
 
 export interface ProductWithCategory extends DbProduct {
-  category: Pick<DbCategory, "name"> | null;
+  category: Pick<DbCategory, "name" | "sort_order"> | null;
 }
 
 export interface DbOrder {

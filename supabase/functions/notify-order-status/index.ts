@@ -188,6 +188,10 @@ Deno.serve(async (req) => {
     const resendKey = Deno.env.get("RESEND_API_KEY");
     const fromEmail = Deno.env.get("RESEND_FROM_EMAIL");
     const siteUrl = Deno.env.get("SITE_URL") ?? "https://malatrasi-woodworks.vercel.app";
+    // Cadastrado como remetente das notificações no Resend, sem caixa de
+    // entrada própria — respostas do cliente ao e-mail do pedido devem cair
+    // aqui, não se perder.
+    const adminReplyEmail = Deno.env.get("STORE_ADMIN_EMAIL");
 
     if (resendKey && fromEmail && isNewOrder) {
       // Pedido novo: extrato de itens/valores no layout "Proposta Comercial"
@@ -217,6 +221,7 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           from: fromEmail,
           to: order.customer.email,
+          ...(adminReplyEmail ? { reply_to: adminReplyEmail } : {}),
           subject: isPendingMercadoPago
             ? `Pedido ${order.order_number} recebido — Malatrasi WoodWorks`
             : `Pedido ${order.order_number} confirmado — Malatrasi WoodWorks`,
@@ -257,6 +262,7 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           from: fromEmail,
           to: order.customer.email,
+          ...(adminReplyEmail ? { reply_to: adminReplyEmail } : {}),
           subject: `Pedido ${order.order_number} · ${statusLabel}`,
           html: `
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f1ece2;padding:32px 16px;">

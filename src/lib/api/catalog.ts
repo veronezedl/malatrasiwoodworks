@@ -3,15 +3,18 @@ import type { Product } from "@/data/products";
 import type { ProductWithCategory } from "@/types/database";
 import { fetchPromoPrices } from "@/lib/api/promotions";
 
-const PRODUCT_SELECT = "*, category:categories(name)";
+const PRODUCT_SELECT = "*, category:categories(name, sort_order)";
 
-// Agrupa por categoria (nome) e, dentro dela, pela ordem manual do admin —
-// ver AdminProductOrder. Feito no cliente porque o PostgREST não reordena a
-// lista principal por uma coluna de uma tabela relacionada (o parâmetro
-// `referencedTable`/`foreignTable` do supabase-js só ordena o objeto
-// embutido, não as linhas retornadas).
+// Agrupa pela ordem manual da categoria (ver AdminCategories) e, dentro
+// dela, pela ordem manual do produto (ver AdminProductOrder). Feito no
+// cliente porque o PostgREST não reordena a lista principal por uma coluna
+// de uma tabela relacionada (o parâmetro `referencedTable`/`foreignTable`
+// do supabase-js só ordena o objeto embutido, não as linhas retornadas).
 function sortByCategoryThenOrder(rows: ProductWithCategory[]): ProductWithCategory[] {
   return [...rows].sort((a, b) => {
+    const categorySortA = a.category?.sort_order ?? Number.MAX_SAFE_INTEGER;
+    const categorySortB = b.category?.sort_order ?? Number.MAX_SAFE_INTEGER;
+    if (categorySortA !== categorySortB) return categorySortA - categorySortB;
     const categoryCompare = (a.category?.name ?? "").localeCompare(
       b.category?.name ?? "",
       "pt-BR",

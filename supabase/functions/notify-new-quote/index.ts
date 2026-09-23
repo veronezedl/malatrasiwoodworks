@@ -102,6 +102,9 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           from: fromEmail,
           to: quote.customer.email,
+          // Remetente cadastrado no Resend não tem caixa própria — se o
+          // cliente responder, cai direto no e-mail do admin.
+          ...(adminEmail ? { reply_to: adminEmail } : {}),
           subject: "Recebemos seu pedido de orçamento — Malatrasi WoodWorks",
           html: renderProposalEmailHtml({
             kind: "orcamento",

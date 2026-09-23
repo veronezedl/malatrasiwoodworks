@@ -13,9 +13,13 @@ const currency = new Intl.NumberFormat("pt-BR", {
 
 interface CategoryGroup {
   name: string;
+  categorySortOrder: number;
   products: ProductWithCategory[];
 }
 
+// Mesmos critérios do catálogo público (ver sortByCategoryThenOrder em
+// lib/api/catalog.ts): ordem manual da categoria primeiro, nome como
+// desempate — assim a tela reflete exatamente o que aparece no site.
 function groupByCategory(products: ProductWithCategory[]): CategoryGroup[] {
   const byName = new Map<string, ProductWithCategory[]>();
   for (const product of products) {
@@ -27,9 +31,14 @@ function groupByCategory(products: ProductWithCategory[]): CategoryGroup[] {
   return [...byName.entries()]
     .map(([name, list]) => ({
       name,
+      categorySortOrder: list[0]?.category?.sort_order ?? Number.MAX_SAFE_INTEGER,
       products: [...list].sort((a, b) => a.sort_order - b.sort_order),
     }))
-    .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+    .sort(
+      (a, b) =>
+        a.categorySortOrder - b.categorySortOrder ||
+        a.name.localeCompare(b.name, "pt-BR"),
+    );
 }
 
 export function AdminProductOrder() {

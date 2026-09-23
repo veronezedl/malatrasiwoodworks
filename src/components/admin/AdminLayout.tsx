@@ -18,6 +18,7 @@ import {
   Boxes,
   LayoutTemplate,
   MapPinned,
+  ArrowUpDown,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/lib/supabase";
@@ -36,6 +37,7 @@ const NAV = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, end: true },
   { to: "/admin/pedidos", label: "Pedidos", icon: ShoppingBag, end: false },
   { to: "/admin/produtos", label: "Produtos", icon: Package, end: false },
+  { to: "/admin/produtos/ordenar", label: "Ordenar Produtos", icon: ArrowUpDown, end: false },
   { to: "/admin/categorias", label: "Categorias", icon: Tags, end: false },
   { to: "/admin/kits", label: "Kits e Combos", icon: Boxes, end: false },
   { to: "/admin/adicionais", label: "Adicionais", icon: PackagePlus, end: false },

@@ -5,6 +5,23 @@ import { fetchPromoPrices } from "@/lib/api/promotions";
 
 const PRODUCT_SELECT = "*, category:categories(name)";
 
+// Agrupa por categoria (nome) e, dentro dela, pela ordem manual do admin —
+// ver AdminProductOrder. Feito no cliente porque o PostgREST não reordena a
+// lista principal por uma coluna de uma tabela relacionada (o parâmetro
+// `referencedTable`/`foreignTable` do supabase-js só ordena o objeto
+// embutido, não as linhas retornadas).
+function sortByCategoryThenOrder(rows: ProductWithCategory[]): ProductWithCategory[] {
+  return [...rows].sort((a, b) => {
+    const categoryCompare = (a.category?.name ?? "").localeCompare(
+      b.category?.name ?? "",
+      "pt-BR",
+    );
+    if (categoryCompare !== 0) return categoryCompare;
+    if (a.sort_order !== b.sort_order) return a.sort_order - b.sort_order;
+    return b.created_at.localeCompare(a.created_at);
+  });
+}
+
 function toProduct(
   row: ProductWithCategory,
   promoPrices: Map<string, number>,
@@ -36,15 +53,13 @@ export async function fetchActiveProducts(): Promise<Product[]> {
       .from("products")
       .select(PRODUCT_SELECT)
       .eq("active", true)
-      .eq("visible_in_store", true)
-      .order("created_at", { ascending: false }),
+      .eq("visible_in_store", true),
     // Best-effort: se a promoção não carregar, o catálogo segue sem ela.
     fetchPromoPrices().catch(() => new Map<string, number>()),
   ]);
   if (error) throw error;
-  return ((data ?? []) as unknown as ProductWithCategory[]).map((row) =>
-    toProduct(row, promoPrices),
-  );
+  const rows = sortByCategoryThenOrder((data ?? []) as unknown as ProductWithCategory[]);
+  return rows.map((row) => toProduct(row, promoPrices));
 }
 
 // Usado tanto pela página de produto (/produto/:slug) quanto pelo "adicionar

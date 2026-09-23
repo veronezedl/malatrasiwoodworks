@@ -21,7 +21,14 @@ export async function uploadProductImage(file: File): Promise<string> {
   return data.publicUrl;
 }
 
-export type ProductInput = Omit<DbProduct, "id" | "created_at" | "updated_at">;
+// sort_order é opcional: sem ele, o banco usa o padrão (produto novo entra
+// no fim da categoria) — a posição exata é ajustada depois na tela de ordenação.
+export type ProductInput = Omit<
+  DbProduct,
+  "id" | "created_at" | "updated_at" | "sort_order"
+> & {
+  sort_order?: number;
+};
 
 export async function createProduct(input: ProductInput): Promise<DbProduct> {
   const { data, error } = await supabase
@@ -42,6 +49,16 @@ export async function updateProduct(
     .update(input)
     .eq("id", id);
   if (error) throw error;
+}
+
+// Troca a posição de dois produtos da mesma categoria (setas na tela de
+// ordenação do admin).
+export async function swapProductOrder(
+  a: Pick<DbProduct, "id" | "sort_order">,
+  b: Pick<DbProduct, "id" | "sort_order">,
+): Promise<void> {
+  await updateProduct(a.id, { sort_order: b.sort_order });
+  await updateProduct(b.id, { sort_order: a.sort_order });
 }
 
 export async function deleteProduct(id: string): Promise<void> {

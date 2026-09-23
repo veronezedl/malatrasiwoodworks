@@ -95,6 +95,8 @@ export interface DbProduct {
   width_cm: number | null;
   height_cm: number | null;
   weight_kg: number | null;
+  // Ordem manual dentro da categoria (menor = aparece antes); ver AdminProductOrder.
+  sort_order: number;
   description: string;
   wood_type: string | null;
   is_custom_order: boolean;

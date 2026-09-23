@@ -31,6 +31,12 @@ export function Home() {
   const filtered = featuredProducts.filter(
     (p) => category === ALL_CATEGORIES_FILTER || p.category === category,
   );
+  // Só mostra o seletor das categorias que têm ao menos 1 produto em
+  // destaque — uma categoria sem nada na vitrine não deve virar um filtro
+  // vazio aqui (ela continua disponível no catálogo completo).
+  const featuredCategoryNames = categories
+    .map((c) => c.name)
+    .filter((name) => featuredProducts.some((p) => p.category === name));
 
   return (
     <>
@@ -58,7 +64,7 @@ export function Home() {
 
           <div className="mb-8">
             <CategoryFilter
-              categories={categories.map((c) => c.name)}
+              categories={featuredCategoryNames}
               value={category}
               onChange={setCategory}
             />

@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Link } from "react-router-dom";
-import { Plus, Pencil, Trash2, Eye, Upload } from "lucide-react";
+import { Plus, Pencil, Trash2, Eye, Upload, ArrowUpDown } from "lucide-react";
 import { deleteProduct, listProducts, updateProduct } from "@/lib/api/products";
 import type { ProductWithCategory } from "@/types/database";
 import { useSeo } from "@/hooks/use-seo";
@@ -86,6 +86,11 @@ export function AdminProducts() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
+          <Button asChild variant="outline">
+            <Link to="/admin/produtos/ordenar">
+              <ArrowUpDown className="size-4" /> Ordenar produtos
+            </Link>
+          </Button>
           <Button type="button" variant="outline" onClick={() => setBulkImportOpen(true)}>
             <Upload className="size-4" /> Importação em massa
           </Button>

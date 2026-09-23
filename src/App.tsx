@@ -34,6 +34,7 @@ import { AdminDashboard } from "@/pages/admin/AdminDashboard";
 import { AdminOrders } from "@/pages/admin/AdminOrders";
 import { AdminOrderDetail } from "@/pages/admin/AdminOrderDetail";
 import { AdminProducts } from "@/pages/admin/AdminProducts";
+import { AdminProductOrder } from "@/pages/admin/AdminProductOrder";
 import { AdminProductForm } from "@/pages/admin/AdminProductForm";
 import { AdminCategories } from "@/pages/admin/AdminCategories";
 import { AdminCustomers } from "@/pages/admin/AdminCustomers";
@@ -89,6 +90,7 @@ function App() {
               <Route path="pedidos/:id" element={<AdminOrderDetail />} />
               <Route path="produtos" element={<AdminProducts />} />
               <Route path="produtos/novo" element={<AdminProductForm />} />
+              <Route path="produtos/ordenar" element={<AdminProductOrder />} />
               <Route path="categorias" element={<AdminCategories />} />
               <Route path="clientes" element={<AdminCustomers />} />
               <Route path="entregas" element={<AdminShipping />} />

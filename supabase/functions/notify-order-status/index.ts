@@ -10,7 +10,9 @@
 //   SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY  (injetadas automaticamente pelo Supabase)
 //   RESEND_API_KEY
 //   RESEND_FROM_EMAIL            ex: "Malatrasi WoodWorks <pedidos@malatrasiwoodworks.com.br>"
-//   STORE_ADMIN_EMAIL            para o aviso de pedido novo ao admin
+//   STORE_ADMIN_EMAIL            reply-to dos emails enviados ao cliente
+//   ORDER_NOTIFY_EMAIL           (opcional) destino do aviso de pedido novo;
+//                                padrão: malatrasiww@gmail.com
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { renderProposalEmailHtml } from "../_shared/emailTemplate.ts";
@@ -356,8 +358,8 @@ Deno.serve(async (req) => {
     // ─── Aviso ao admin de pedido novo (só na criação, não a cada mudança
     // de status posterior) ────────────────────────────────────────────────
     if (isNewOrder) {
-      const adminEmail = Deno.env.get("STORE_ADMIN_EMAIL");
-      if (resendKey && fromEmail && adminEmail) {
+      const adminEmail = Deno.env.get("ORDER_NOTIFY_EMAIL") ?? "malatrasiww@gmail.com";
+      if (resendKey && fromEmail) {
         const items = (order.order_items ?? []) as OrderItemRow[];
         const itemsList = items
           .map((item) => `${item.quantity} × ${item.product_name}`)

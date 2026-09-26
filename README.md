@@ -72,6 +72,8 @@ Secrets, ou via CLI):
 supabase secrets set RESEND_API_KEY=re_xxxxx
 supabase secrets set RESEND_FROM_EMAIL="Malatrasi WoodWorks <pedidos@malatrasiwoodworks.com.br>"
 supabase secrets set STORE_ADMIN_EMAIL="contato@malatrasiwoodworks.com.br"
+# opcional — destino do aviso de pedido novo (padrão: malatrasiww@gmail.com)
+supabase secrets set ORDER_NOTIFY_EMAIL="malatrasiww@gmail.com"
 supabase secrets set SITE_URL="https://malatrasiwoodworks.com.br"
 ```
 

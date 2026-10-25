@@ -10,9 +10,9 @@ por email a cada mudança de status do pedido.
 - Supabase (Postgres + Auth + Edge Functions) como backend
 - Resend para email transacional
 
-Sem gateway de pagamento por enquanto — o cliente escolhe a forma de
-pagamento (Pix, transferência, dinheiro ou a combinar) no checkout, e o
-pagamento é combinado diretamente com a loja após a confirmação do pedido.
+Pagamento online pelo Mercado Pago (Checkout Pro): o pedido é criado no
+site e o cliente é levado à página do Mercado Pago para pagar com Pix,
+cartão ou boleto. O webhook do Mercado Pago atualiza o pedido sozinho.
 
 ## Colocando no ar (primeira vez)
 
@@ -26,7 +26,8 @@ npm install
 
 1. Crie um projeto em [supabase.com](https://supabase.com).
 2. No **SQL Editor**, execute em ordem:
-   - `supabase/migrations/0001_init.sql` (tabelas, RLS, triggers, storage)
+   - todos os arquivos de `supabase/migrations/` em ordem numérica (`0001_init.sql` … `0016_…`;
+     o `0004_mercadopago.sql` cria as colunas do Mercado Pago)
    - `supabase/seed.sql` (catálogo inicial ilustrativo)
 3. Em **Project Settings → API**, copie `Project URL` e a chave `anon public`.
 4. Copie `.env.example` para `.env` e preencha:
@@ -52,6 +53,11 @@ Requer o [CLI do Supabase](https://supabase.com/docs/guides/cli):
 ```bash
 supabase login
 supabase link --project-ref <seu-project-ref>
+supabase functions deploy create-order
+supabase functions deploy create-mercadopago-preference
+# o Mercado Pago chama o webhook sem login do Supabase — precisa do --no-verify-jwt
+supabase functions deploy mercadopago-webhook --no-verify-jwt
+supabase functions deploy google-reviews
 supabase functions deploy notify-order-status
 supabase functions deploy notify-support-request
 supabase functions deploy notify-new-quote
@@ -76,6 +82,21 @@ supabase secrets set STORE_ADMIN_EMAIL="contato@malatrasiwoodworks.com.br"
 supabase secrets set ORDER_NOTIFY_EMAIL="malatrasiww@gmail.com"
 supabase secrets set SITE_URL="https://malatrasiwoodworks.com.br"
 ```
+
+Mercado Pago (credenciais em mercadopago.com.br/developers → Suas
+integrações → sua aplicação):
+
+```bash
+# produção começa com APP_USR- ; credencial de teste (TEST-) abre o sandbox
+supabase secrets set MERCADOPAGO_ACCESS_TOKEN=APP_USR-xxxxx
+# chave secreta mostrada em Webhooks → Configurar notificações
+supabase secrets set MERCADOPAGO_WEBHOOK_SECRET=xxxxx
+```
+
+No painel da aplicação, em **Webhooks → Configurar notificações**, no modo
+**Produção**: URL `https://<seu-project-ref>.supabase.co/functions/v1/mercadopago-webhook`
+e evento **Pagamentos** marcado. Sem `MERCADOPAGO_WEBHOOK_SECRET` o webhook
+ignora as notificações e os pedidos não saem de "pendente".
 
 O remetente do Resend precisa pertencer a um domínio verificado na sua conta
 Resend (ou use o domínio de testes enquanto isso).

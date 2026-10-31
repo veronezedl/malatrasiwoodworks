@@ -48,6 +48,7 @@ import { AdminBanners } from "@/pages/admin/AdminBanners";
 import { AdminShippingRates } from "@/pages/admin/AdminShippingRates";
 import { AdminGallery } from "@/pages/admin/AdminGallery";
 import { AdminUsers } from "@/pages/admin/AdminUsers";
+import { AdminNotifications } from "@/pages/admin/AdminNotifications";
 
 function App() {
   return (
@@ -86,6 +87,7 @@ function App() {
             <Route path="admin/login" element={<AdminLogin />} />
             <Route path="admin" element={<AdminLayout />}>
               <Route index element={<AdminDashboard />} />
+              <Route path="notificacoes" element={<AdminNotifications />} />
               <Route path="pedidos" element={<AdminOrders />} />
               <Route path="pedidos/:id" element={<AdminOrderDetail />} />
               <Route path="produtos" element={<AdminProducts />} />

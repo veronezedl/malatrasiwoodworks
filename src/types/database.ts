@@ -352,3 +352,16 @@ export interface DbHeroSettings {
   opacity: number;
   updated_at: string;
 }
+
+export type AdminNotificationType = "new_order" | "payment_approved";
+
+export interface DbAdminNotification {
+  id: string;
+  type: AdminNotificationType;
+  title: string;
+  body: string | null;
+  url: string | null;
+  order_id: string | null;
+  read_at: string | null;
+  created_at: string;
+}

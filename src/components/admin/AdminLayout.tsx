@@ -1,5 +1,5 @@
 import * as React from "react";
-import { NavLink, Navigate, Outlet, useLocation } from "react-router-dom";
+import { Link, NavLink, Navigate, Outlet, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   Package,
@@ -19,8 +19,13 @@ import {
   LayoutTemplate,
   MapPinned,
   ArrowUpDown,
+  Bell,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
+import {
+  AdminNotificationsProvider,
+  useAdminNotifications,
+} from "@/hooks/use-admin-notifications";
 import { supabase } from "@/lib/supabase";
 import {
   Sheet,
@@ -35,6 +40,7 @@ import logoUrl from "@/assets/logo.png";
 
 const NAV = [
   { to: "/admin", label: "Dashboard", icon: LayoutDashboard, end: true },
+  { to: "/admin/notificacoes", label: "Notificações", icon: Bell, end: false },
   { to: "/admin/pedidos", label: "Pedidos", icon: ShoppingBag, end: false },
   { to: "/admin/produtos", label: "Produtos", icon: Package, end: false },
   { to: "/admin/produtos/ordenar", label: "Ordenar Produtos", icon: ArrowUpDown, end: false },
@@ -92,6 +98,35 @@ function usePendingOrdersCount() {
   return count;
 }
 
+function CountBadge({ count }: { count: number }) {
+  if (count <= 0) return null;
+  return (
+    <span className="flex size-5 items-center justify-center rounded-full bg-accent text-[11px] font-bold text-white">
+      {count > 99 ? "99+" : count}
+    </span>
+  );
+}
+
+function NotificationBell() {
+  const { unreadCount } = useAdminNotifications();
+  return (
+    <Link
+      to="/admin/notificacoes"
+      aria-label={
+        unreadCount > 0 ? `Notificações (${unreadCount} não lidas)` : "Notificações"
+      }
+      className="relative rounded-brand p-2 text-primary hover:bg-bg-muted"
+    >
+      <Bell className="size-5" />
+      {unreadCount > 0 && (
+        <span className="absolute -right-0.5 -top-0.5 flex min-w-[18px] items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold leading-[18px] text-white">
+          {unreadCount > 99 ? "99+" : unreadCount}
+        </span>
+      )}
+    </Link>
+  );
+}
+
 function AdminNavLinks({
   pendingCount,
   onNavigate,
@@ -99,6 +134,7 @@ function AdminNavLinks({
   pendingCount: number;
   onNavigate?: () => void;
 }) {
+  const { unreadCount } = useAdminNotifications();
   return (
     <nav className="mt-8 flex flex-1 flex-col gap-1">
       {NAV.map(({ to, label, icon: Icon, end }) => (
@@ -117,11 +153,8 @@ function AdminNavLinks({
         >
           <Icon className="size-4" />
           <span className="flex-1">{label}</span>
-          {to === "/admin/pedidos" && pendingCount > 0 && (
-            <span className="flex size-5 items-center justify-center rounded-full bg-accent text-[11px] font-bold text-white">
-              {pendingCount}
-            </span>
-          )}
+          {to === "/admin/pedidos" && <CountBadge count={pendingCount} />}
+          {to === "/admin/notificacoes" && <CountBadge count={unreadCount} />}
         </NavLink>
       ))}
     </nav>
@@ -153,69 +186,75 @@ export function AdminLayout() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-bg-muted sm:flex-row">
-      <header className="flex items-center justify-between border-b border-black/10 bg-white px-4 py-3 sm:hidden">
-        <div className="flex items-center gap-2">
-          <img src={logoUrl} alt="Malatrasi WoodWorks" className="size-8 object-contain" />
-          <span className="font-heading text-sm font-bold text-primary">Admin</span>
-        </div>
-        <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
-          <SheetTrigger asChild>
-            <button
-              type="button"
-              aria-label="Abrir menu"
-              className="rounded-brand p-2 text-primary hover:bg-bg-muted"
-            >
-              <Menu className="size-5" />
-            </button>
-          </SheetTrigger>
-          <SheetContent side="left" className="w-64 max-w-[80%]">
-            <SheetHeader>
-              <SheetTitle>Admin</SheetTitle>
-            </SheetHeader>
-            <AdminNavLinks
-              pendingCount={pendingCount}
-              onNavigate={() => setMobileNavOpen(false)}
-            />
-            <SheetClose asChild>
-              <button
-                type="button"
-                onClick={() => signOut()}
-                className="mt-2 flex items-center gap-3 rounded-brand border-t border-black/10 px-3 py-2.5 pt-4 text-sm font-medium text-text-muted hover:bg-bg-muted hover:text-accent"
-              >
-                <LogOut className="size-4" />
-                Sair
-              </button>
-            </SheetClose>
-          </SheetContent>
-        </Sheet>
-      </header>
+    <AdminNotificationsProvider>
+      <div className="flex min-h-screen flex-col bg-bg-muted sm:flex-row">
+        <header className="flex items-center justify-between border-b border-black/10 bg-white px-4 py-3 sm:hidden">
+          <div className="flex items-center gap-2">
+            <img src={logoUrl} alt="Malatrasi WoodWorks" className="size-8 object-contain" />
+            <span className="font-heading text-sm font-bold text-primary">Admin</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <NotificationBell />
+            <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+              <SheetTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Abrir menu"
+                  className="rounded-brand p-2 text-primary hover:bg-bg-muted"
+                >
+                  <Menu className="size-5" />
+                </button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-64 max-w-[80%]">
+                <SheetHeader>
+                  <SheetTitle>Admin</SheetTitle>
+                </SheetHeader>
+                <AdminNavLinks
+                  pendingCount={pendingCount}
+                  onNavigate={() => setMobileNavOpen(false)}
+                />
+                <SheetClose asChild>
+                  <button
+                    type="button"
+                    onClick={() => signOut()}
+                    className="mt-2 flex items-center gap-3 rounded-brand border-t border-black/10 px-3 py-2.5 pt-4 text-sm font-medium text-text-muted hover:bg-bg-muted hover:text-accent"
+                  >
+                    <LogOut className="size-4" />
+                    Sair
+                  </button>
+                </SheetClose>
+              </SheetContent>
+            </Sheet>
+          </div>
+        </header>
 
-      <aside className="hidden w-60 shrink-0 flex-col border-r border-black/10 bg-white p-5 sm:sticky sm:top-0 sm:flex sm:h-screen sm:overflow-y-auto">
-        <div className="flex items-center gap-2 px-1">
-          <img src={logoUrl} alt="Malatrasi WoodWorks" className="size-8 object-contain" />
-          <span className="font-heading text-sm font-bold text-primary">
-            Admin
-          </span>
-        </div>
+        <aside className="hidden w-60 shrink-0 flex-col border-r border-black/10 bg-white p-5 sm:sticky sm:top-0 sm:flex sm:h-screen sm:overflow-y-auto">
+          <div className="flex items-center gap-2 px-1">
+            <img src={logoUrl} alt="Malatrasi WoodWorks" className="size-8 object-contain" />
+            <span className="flex-1 font-heading text-sm font-bold text-primary">
+              Admin
+            </span>
+            <NotificationBell />
+          </div>
 
-        <AdminNavLinks pendingCount={pendingCount} />
+          <AdminNavLinks pendingCount={pendingCount} />
 
-        <button
-          type="button"
-          onClick={() => signOut()}
-          className="flex items-center gap-3 rounded-brand border-t border-black/10 px-3 py-2.5 pt-4 text-sm font-medium text-text-muted hover:bg-bg-muted hover:text-accent"
-        >
-          <LogOut className="size-4" />
-          Sair
-        </button>
-      </aside>
+          <button
+            type="button"
+            onClick={() => signOut()}
+            className="flex items-center gap-3 rounded-brand border-t border-black/10 px-3 py-2.5 pt-4 text-sm font-medium text-text-muted hover:bg-bg-muted hover:text-accent"
+          >
+            <LogOut className="size-4" />
+            Sair
+          </button>
+        </aside>
 
-      <main className="min-w-0 flex-1 overflow-x-hidden p-4 sm:p-8">
-        <PageTransition>
-          <Outlet />
-        </PageTransition>
-      </main>
-    </div>
+        <main className="min-w-0 flex-1 overflow-x-hidden p-4 sm:p-8">
+          <PageTransition>
+            <Outlet />
+          </PageTransition>
+        </main>
+      </div>
+    </AdminNotificationsProvider>
   );
 }

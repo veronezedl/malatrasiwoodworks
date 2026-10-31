@@ -15,6 +15,7 @@
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
+import { notifyPaymentApproved } from "../_shared/adminNotifications.ts";
 
 // Valida a assinatura conforme documentado pelo Mercado Pago: o header
 // x-signature vem como "ts=<timestamp>,v1=<hash>"; o hash é um
@@ -127,7 +128,7 @@ Deno.serve(async (req) => {
 
     const { data: order } = await supabase
       .from("orders")
-      .select("id, status, payment_status")
+      .select("id, order_number, total, status, payment_status, customer:customers(full_name)")
       .eq("id", orderId)
       .maybeSingle();
     if (!order) {
@@ -153,9 +154,39 @@ Deno.serve(async (req) => {
       updates.status = "confirmed";
     }
 
-    await supabase.from("orders").update(updates).eq("id", orderId);
+    // O Mercado Pago costuma mandar mais de uma notificação quase ao mesmo
+    // tempo pro mesmo pagamento: quando ele vira "paid", o update só pega se
+    // o pedido ainda não estava pago, e é isso que decide quem avisa o dono
+    // da loja (uma vez por venda).
+    let becamePaid = false;
+    if (paymentStatus === "paid") {
+      const { data: changed } = await supabase
+        .from("orders")
+        .update(updates)
+        .eq("id", orderId)
+        .neq("payment_status", "paid")
+        .select("id");
+      becamePaid = (changed?.length ?? 0) > 0;
+      if (!becamePaid) {
+        // Já estava pago (notificação repetida ou admin marcou à mão): só
+        // registra os dados do Mercado Pago.
+        await supabase
+          .from("orders")
+          .update({ mp_payment_id: updates.mp_payment_id, mp_status: mpStatus })
+          .eq("id", orderId);
+      }
+    } else {
+      await supabase.from("orders").update(updates).eq("id", orderId);
+    }
 
-    if (shouldAdvanceStatus) {
+    if (becamePaid) {
+      const customer = order.customer as unknown as { full_name: string } | null;
+      await notifyPaymentApproved(supabase, order, customer?.full_name || "Cliente");
+    }
+
+    // Mesmo critério pro e-mail de confirmação ao cliente: só quem de fato
+    // marcou o pedido como pago manda.
+    if (shouldAdvanceStatus && becamePaid) {
       const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
       fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/notify-order-status`, {
         method: "POST",

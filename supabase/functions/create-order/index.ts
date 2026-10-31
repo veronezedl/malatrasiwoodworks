@@ -10,6 +10,7 @@
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { priceOrder, PricingError, type OrderLineInput } from "../_shared/orderPricing.ts";
+import { notifyNewOrder } from "../_shared/adminNotifications.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -118,6 +119,9 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({ orderId: order.id, status: "pending", isNewOrder: true }),
     }).catch(() => {});
+
+    // Push no celular do dono da loja + central de notificações do painel.
+    await notifyNewOrder(supabase, order, customer.full_name);
 
     return new Response(JSON.stringify({ order }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

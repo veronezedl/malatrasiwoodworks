@@ -58,6 +58,7 @@ supabase functions deploy create-mercadopago-preference
 # o Mercado Pago chama o webhook sem login do Supabase — precisa do --no-verify-jwt
 supabase functions deploy mercadopago-webhook --no-verify-jwt
 supabase functions deploy google-reviews
+supabase functions deploy admin-push
 supabase functions deploy notify-order-status
 supabase functions deploy notify-support-request
 supabase functions deploy notify-new-quote
@@ -98,10 +99,40 @@ No painel da aplicação, em **Webhooks → Configurar notificações**, no modo
 e evento **Pagamentos** marcado. Sem `MERCADOPAGO_WEBHOOK_SECRET` o webhook
 ignora as notificações e os pedidos não saem de "pendente".
 
+Notificações de venda no celular (Web Push). Gere o par de chaves uma vez
+e guarde: trocar as chaves obriga a ativar as notificações de novo em cada
+aparelho.
+
+```bash
+npx web-push generate-vapid-keys
+supabase secrets set VAPID_PUBLIC_KEY=<Public Key>
+supabase secrets set VAPID_PRIVATE_KEY=<Private Key>
+supabase secrets set VAPID_SUBJECT="mailto:malatrasiww@gmail.com"
+```
+
 O remetente do Resend precisa pertencer a um domínio verificado na sua conta
 Resend (ou use o domínio de testes enquanto isso).
 
-### 5. Rodar em desenvolvimento
+### 5. Notificações de venda no Android do dono da loja
+
+A cada pedido novo e a cada pagamento aprovado pelo Mercado Pago, o painel
+grava uma notificação na central (`/admin/notificacoes`, sininho no topo do
+painel) e manda um push para os celulares em que um admin ativou as
+notificações. Para ativar no Android:
+
+1. No **Chrome** do celular, entre em `/admin` com o login de admin.
+2. Menu do Chrome (⋮) → **Adicionar à tela inicial** / **Instalar app** — o
+   painel passa a abrir como um app e as notificações tocando nele abrem
+   direto o pedido. (Funciona também sem instalar, pelo próprio Chrome.)
+3. Abra **Notificações** no painel → **Ativar notificações** → permita. Chega
+   uma notificação de teste na hora.
+4. Se as notificações atrasarem com a tela apagada, em Configurações do
+   Android → Apps → Chrome (ou o app instalado) → Bateria, deixe **Sem
+   restrições**.
+
+No iPhone só funciona com o painel adicionado à Tela de Início (iOS 16.4+).
+
+### 6. Rodar em desenvolvimento
 
 ```bash
 npm run dev
